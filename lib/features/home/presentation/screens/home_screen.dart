@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_routes.dart';
-import '../../../pos/presentation/screens/pos_screen.dart';
 
-import '../widgets/sidebar_menu.dart';
+import 'package:cashier_app_v2/core/constants/app_colors.dart';
+import 'package:cashier_app_v2/core/constants/app_routes.dart';
+import 'package:cashier_app_v2/features/closing/presentation/screen/closing_screen.dart';
+import 'package:cashier_app_v2/features/debts/presentation/screen/debts_screen.dart';
+import 'package:cashier_app_v2/features/expenses/presentation/screen/expenses_screen.dart';
+import 'package:cashier_app_v2/features/inventory/presentation/screen/inventory_screen.dart';
+import 'package:cashier_app_v2/features/pos/presentation/screen/pos_screen.dart';
+import 'package:cashier_app_v2/features/reports/presentation/screen/report_screen.dart';
+import 'package:cashier_app_v2/features/workers/presentation/screen/workers_screen.dart';
+
 import '../widgets/dashboard_placeholder.dart';
+import '../widgets/sidebar_menu.dart';
 
-/// فيتشر "home" هو المسؤول عن التنقل بين كل الفيتشرز - بدل ما يكون
-/// التنقل في مجلد presentation/shell منفصل بره الـ features.
-/// أي فيتشر جديد تضيفه، بتسجله هنا في _screens بس، والـ Sidebar
-/// (اللي هو widget جوه نفس فيتشر home) بيبعت اسم الـ route المختار.
+/// الشاشة الرئيسية المسؤولة عن التنقل بين جميع أقسام التطبيق.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -20,47 +24,85 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
-  // الترتيب هنا لازم يطابق ترتيب AppRoutes.order بالظبط
-  final List<Widget> _screens = const [
-    PosScreen(),
-    DashboardPlaceholder(),
-
+  /// يجب أن يكون ترتيب الشاشات مطابقًا تمامًا لترتيب AppRoutes.order.
+  final List<Widget> _screens = [
+    const PosScreen(),
+    const DebtsScreen(),
+    const DashboardPlaceholder(),
+    const ReportScreen(),
+    const InventoryScreen(),
+    const WorkersScreen(),
+    const ExpensesScreen(),
+    const ClosingScreen(),
   ];
 
+  String get _currentRoute {
+    if (_selectedIndex < 0 ||
+        _selectedIndex >= AppRoutes.order.length) {
+      return AppRoutes.order.first;
+    }
+
+    return AppRoutes.order[_selectedIndex];
+  }
+
   void _onNavigate(String route) {
-    setState(() => _selectedIndex = AppRoutes.order.indexOf(route));
+    final index = AppRoutes.order.indexOf(route);
+
+    // تجاهل المسار إذا لم يكن موجودًا في AppRoutes.order
+    if (index == -1 || index >= _screens.length) {
+      return;
+    }
+
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width > 900;
+    final isDesktop = MediaQuery.sizeOf(context).width > 900;
 
     return Scaffold(
       backgroundColor: AppColors.background,
+
       appBar: isDesktop
           ? null
           : AppBar(
-              backgroundColor: AppColors.surfaceLight,
-              title: const Text('سوبر ماركت'),
-            ),
+        backgroundColor: AppColors.surfaceLight,
+        title: const Text('سوبر ماركت'),
+      ),
+
       drawer: isDesktop
           ? null
           : Drawer(
-              child: SidebarMenu(
-                currentRoute: AppRoutes.order[_selectedIndex],
-                onNavigate: (route) {
-                  _onNavigate(route);
-                  Navigator.pop(context);
-                },
-              ),
-            ),
+        child: SidebarMenu(
+          currentRoute: _currentRoute,
+          onNavigate: (route) {
+            _onNavigate(route);
+            Navigator.of(context).pop();
+          },
+        ),
+      ),
+
       body: Row(
         children: [
           if (isDesktop)
-            SidebarMenu(currentRoute: AppRoutes.order[_selectedIndex], onNavigate: _onNavigate),
-          if (isDesktop) const VerticalDivider(width: 1, color: Colors.white12),
+            SidebarMenu(
+              currentRoute: _currentRoute,
+              onNavigate: _onNavigate,
+            ),
+
+          if (isDesktop)
+            const VerticalDivider(
+              width: 1,
+              color: Colors.white12,
+            ),
+
           Expanded(
-            child: IndexedStack(index: _selectedIndex, children: _screens),
+            child: IndexedStack(
+              index: _selectedIndex,
+              children: _screens,
+            ),
           ),
         ],
       ),

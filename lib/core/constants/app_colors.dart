@@ -1,32 +1,36 @@
 import 'package:flutter/material.dart';
 
-/// كل ألوان التطبيق في مكان واحد - نفس الاستايل اللي في تصميم الكاشير
-/// (خلفية سوداء + لمسات ذهبية). أي تغيير في اللون هنا بينعكس على المشروع كله.
-class AppColors {
-  AppColors._();
+abstract final class AppColors {
+  // خلفيات
+  static const background = Color(0xFF090909);
+  static const surface = Color(0xFF101010);
+  static const surfaceLight = Color(0xFF161616);
+  static const card = Color(0xFF121212);
+  static const input = Color(0xFF111111);
 
-  // ---- الخلفيات ----
-  static const background = Color(0xFF0D0D0D); // خلفية الشاشة الأساسية
-  static const surface = Color(0xFF1E1E1E); // خلفية الكروت والعناصر (Card, TextField)
-  static const surfaceLight = Color(0xFF141414); // خلفية الهيدر / الـ AppBar
-  static const surfaceElevated = Color(0xFF262626); // عناصر فوق الـ surface (Dialogs, Sheets)
-  static const border = Colors.white12; // خطوط الفواصل الخفيفة
+  // الحدود والفواصل
+  static const border = Color(0xFF242424);
+  static const borderLight = Color(0xFF303030);
+  static const divider = Color(0xFF1D1D1D);
 
-  // ---- اللون الأساسي (الذهبي) ----
-  static const primary = Color(0xFFD4A017);
-  static const primaryLight = Color(0xFFE8C158); // Hover / تفعيل خفيف
-  static const primaryDark = Color(0xFFA87D0E); // ظل أغمق للأزرار المضغوطة
-  static const onPrimary = Colors.black; // لون النص/الأيقونة فوق الذهبي
+  // الألوان الأساسية
+  static const gold = Color(0xFFE0B52F);
+  static const goldLight = Color(0xFFF1CF4A);
+  static const goldDark = Color(0xFF9C7814);
 
-  // ---- ألوان الحالة ----
-  static const danger = Color(0xFFE53935); // حذف / نفاذ المخزون / أخطاء
-  static const dangerBg = Color(0xFF3A1F1F); // خلفية خفيفة لأزرار/تنبيهات الخطر
-  static const success = Color(0xFF43A047); // نجاح / إتمام بيع / مطابقة الكاش
-  static const warning = Color(0xFFF9A825); // تنبيهات متوسطة (مخزون منخفض)
+  // الحالات
+  static const success = Color(0xFF36C878);
+  static const danger = Color(0xFFE95B5B);
+  static const warning = Color(0xFFF0B429);
 
-  // ---- النصوص ----
-  static const textPrimary = Colors.white;
-  static const textSecondary = Colors.white70;
-  static const textMuted = Colors.white38;
-  static const textDisabled = Colors.white24;
+  // النصوص
+  static const textPrimary = Color(0xFFF2F2F2);
+  static const textSecondary = Color(0xFFA0A0A0);
+  static const textHint = Color(0xFF686868);
+  static const textDisabled = Color(0xFF505050);
+
+  // ألوان شفافة جاهزة
+  static const goldSurface = Color(0x1FE0B52F);
+  static const dangerSurface = Color(0x26E95B5B);
+  static const successSurface = Color(0x2636C878);
 }
