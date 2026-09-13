@@ -17,33 +17,35 @@ class SidebarMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 280,
-      color: AppColors.background,
-      child: Column(
-        children: [
-          const SidebarHeader(),
-          const Divider(color: AppColors.border, height: 1),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                for (final section in sidebarSections) ...[
-                  SidebarSectionTitle(section.title),
-                  for (final item in section.items)
-                    SidebarNavItem(
-                      icon: item.icon,
-                      label: item.label,
-                      isActive: currentRoute == item.route,
-                      onTap: () => onNavigate(item.route),
-                    ),
+    return SafeArea(
+      child: Container(
+        width: 280,
+        color: AppColors.background,
+        child: Column(
+          children: [
+            const SidebarHeader(),
+            const Divider(color: AppColors.border, height: 1),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  for (final section in sidebarSections) ...[
+                    SidebarSectionTitle(section.title),
+                    for (final item in section.items)
+                      SidebarNavItem(
+                        icon: item.icon,
+                        label: item.label,
+                        isActive: currentRoute == item.route,
+                        onTap: () => onNavigate(item.route),
+                      ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          const Divider(color: AppColors.border, height: 1),
-          const SidebarFooter(userName: 'احمد', userRole: 'مدير النظام'),
-        ],
+            const Divider(color: AppColors.border, height: 1),
+            const SidebarFooter(userName: 'احمد', userRole: 'مدير النظام'),
+          ],
+        ),
       ),
     );
   }
