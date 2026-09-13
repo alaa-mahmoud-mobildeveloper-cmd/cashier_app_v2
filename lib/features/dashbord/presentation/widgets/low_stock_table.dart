@@ -9,6 +9,8 @@ class LowStockTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const double tableMinWidth = 640.0;
+
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -29,23 +31,42 @@ class LowStockTable extends StatelessWidget {
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(color: AppColors.gold.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
+                  decoration: BoxDecoration(color: AppColors.gold.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
                   child: Text('${items.length} صنف', style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.w600, fontSize: 12)),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: 640,
-                child: Column(
-                  children: [
-                    _headerRow(),
-                    for (final item in items) _dataRow(item),
-                  ],
-                ),
-              ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final actualWidth = constraints.maxWidth > tableMinWidth
+                    ? constraints.maxWidth
+                    : tableMinWidth;
+
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: actualWidth,
+                    child: Column(
+                      children: [
+                        _headerRow(),
+                        if (items.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Center(
+                              child: Text(
+                                'لا توجد أصناف قريبة النفاد',
+                                style: TextStyle(color: AppColors.textSecondary),
+                              ),
+                            ),
+                          )
+                        else
+                          for (final item in items) _dataRow(item),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -83,8 +104,8 @@ class LowStockTable extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  border: Border.all(color: color.withOpacity(0.5)),
-                  color: color.withOpacity(0.12),
+                  border: Border.all(color: color.withValues(alpha: 0.5)),
+                  color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),

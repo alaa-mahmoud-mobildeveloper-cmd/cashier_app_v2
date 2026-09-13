@@ -5,9 +5,12 @@ import '../../data/models/product_table_columns.dart';
 class ProductsTableHeader extends StatelessWidget {
   const ProductsTableHeader({super.key});
 
-  Widget _cell(String text, double width) {
-    return SizedBox(
-      width: width,
+  // نسب التوزيع للأعمدة لتتجاوب مع الشاشة وتتطابق مع الصفوف
+  static const _flexes = [1, 3, 2, 2, 2, 2, 2, 2, 2, 2];
+
+  Widget _cell(String text, int flex) {
+    return Expanded(
+      flex: flex,
       child: Text(
         text,
         textAlign: TextAlign.center,
@@ -24,25 +27,29 @@ class ProductsTableHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const headers = [
+      'الصورة',
+      'اسم الصنف',
+      'الباركود',
+      'الفئة',
+      'سعر البيع',
+      'التكلفة/وحدة',
+      'كرتونة',
+      'الكمية',
+      'الحالة',
+      'إجراءات',
+    ];
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _cell('الصورة', ProductTableColumns.image as double),
-          _cell('اسم الصنف', ProductTableColumns.name as double),
-          _cell('الباركود', ProductTableColumns.barcode as double),
-          _cell('الفئة', ProductTableColumns.category as double),
-          _cell('سعر البيع', ProductTableColumns.sellPrice as double),
-          _cell('التكلفة/وحدة', ProductTableColumns.unitCost as double),
-          _cell('كرتونة', ProductTableColumns.carton as double),
-          _cell('الكمية', ProductTableColumns.quantity as double),
-          _cell('الحالة', ProductTableColumns.status as double),
-          _cell('إجراءات', ProductTableColumns.actions as double),
-        ],
+        children: List.generate(
+          headers.length,
+              (i) => _cell(headers[i], _flexes[i]),
+        ),
       ),
     );
   }

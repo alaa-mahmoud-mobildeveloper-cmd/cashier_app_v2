@@ -72,47 +72,163 @@ class _PosScreenState extends State<PosScreen> {
     Expanded(child: ProductsGrid(products: filteredProducts, onProductTap: addProduct)),
   ]);
 
-  Widget cartPanel() => Container(color: AppColors.surface, padding: const EdgeInsets.fromLTRB(16, 16, 16, 12), child: SingleChildScrollView(child: Column(children: [
-    Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Row(
+  Widget cartPanel() => Container(
+    height: double.infinity,
+    color: AppColors.surface,
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        // تحديد ما إذا كانت الشاشة سطح مكتب (عرض أكبر من 850 بكسل مثلاً)
+        final isDesktop = constraints.maxWidth > 850;
+
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              // منع التمدد الزائد على الشاشات الكبيرة وتحديد حد أقصى للعرض
+              maxWidth: isDesktop ? 450 : double.infinity,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(
-                    Icons.shopping_cart_outlined,
-                    color: AppColors.gold
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.shopping_cart_outlined, color: AppColors.gold),
+                        SizedBox(width: 8),
+                        Text(
+                          'السلة',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (cart.isNotEmpty)
+                      TextButton(
+                        onPressed: () => setState(cart.clear),
+                        child: const Text(
+                          'تفريغ السلة',
+                          style: TextStyle(color: AppColors.danger),
+                        ),
+                      ),
+                  ],
                 ),
-                SizedBox(width: 8),
-                Text(
-                    'السلة',
-                    style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold
-                    )
-                )
-              ]
+                const Divider(height: 24),
+                if (cart.isEmpty)
+                  const SizedBox(child: EmptyCartState())
+                else
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: cart.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) => CartItemTile(
+                      item: cart[i],
+                      onQuantityChanged: (value) => changeQuantity(cart[i], value),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'الإجمالي قبل الخصم',
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                    Text('${subtotal.toStringAsFixed(2)} ج'),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: discountController,
+                  onChanged: (_) => setState(() {}),
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'خصم (ج)',
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.goldSurface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.goldDark),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'الإجمالي',
+                        style: TextStyle(
+                          color: AppColors.goldLight,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${total.toStringAsFixed(2)} ج',
+                        style: const TextStyle(
+                          color: AppColors.goldLight,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                PaymentMethods(
+                  selected: paymentMethod,
+                  onSelected: (value) => setState(() => paymentMethod = value),
+                ),
+                if (paymentMethod == PaymentMethod.cash) ...[
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: receivedController,
+                    onChanged: (_) => setState(() {}),
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'المبلغ المستلم',
+                      suffixText: 'الباقي ${change.toStringAsFixed(2)} ج',
+                      isDense: true,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 10),
+                const TextField(
+                  maxLines: 1,
+                  decoration: InputDecoration(
+                    hintText: 'ملاحظة (اختياري)',
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: cart.isEmpty ? null : () {},
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: const Text('إتمام البيع'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: () {},
+                      icon: const Icon(Icons.calculate_outlined),
+                    ),
+                  ],
+                ),
+                SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 20),
+              ],
+            ),
           ),
-          if (cart.isNotEmpty)
-            TextButton(
-                onPressed: () => setState(cart.clear),
-                child: const Text('تفريغ السلة', style: TextStyle(color: AppColors.danger)))]),
-    const Divider(height: 24),
-    if (cart.isEmpty) const EmptyCartState() else ListView.separated(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: cart.length, separatorBuilder: (_, __) => const SizedBox(height: 8), itemBuilder: (_, i) => CartItemTile(item: cart[i], onQuantityChanged: (value) => changeQuantity(cart[i], value))),
-    const SizedBox(height: 12),
-    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('الإجمالي قبل الخصم', style: TextStyle(color: AppColors.textSecondary)), Text('${subtotal.toStringAsFixed(2)} ج')]),
-    const SizedBox(height: 8),
-    TextField(controller: discountController, onChanged: (_) => setState(() {}), keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'خصم (ج)', isDense: true)),
-    const SizedBox(height: 10),
-    Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: AppColors.goldSurface, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.goldDark)), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('الإجمالي', style: TextStyle(color: AppColors.goldLight, fontWeight: FontWeight.bold)), Text('${total.toStringAsFixed(2)} ج', style: const TextStyle(color: AppColors.goldLight, fontSize: 20, fontWeight: FontWeight.bold))])),
-    const SizedBox(height: 10),
-    PaymentMethods(selected: paymentMethod, onSelected: (value) => setState(() => paymentMethod = value)),
-    if (paymentMethod == PaymentMethod.cash) ...[const SizedBox(height: 10), TextField(controller: receivedController, onChanged: (_) => setState(() {}), keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'المبلغ المستلم', suffixText: 'الباقي ${change.toStringAsFixed(2)} ج', isDense: true))],
-    const SizedBox(height: 10),
-    const TextField(maxLines: 1, decoration: InputDecoration(hintText: 'ملاحظة (اختياري)', isDense: true)),
-    const SizedBox(height: 10),
-    Row(children: [Expanded(child: ElevatedButton.icon(onPressed: cart.isEmpty ? null : () {}, icon: const Icon(Icons.check_circle_outline), label: const Text('إتمام البيع'))), const SizedBox(width: 8), IconButton(onPressed: () {}, icon: const Icon(Icons.calculate_outlined))]),
-  ]
-  )
-  )
+        );
+      },
+    ),
   );
 }

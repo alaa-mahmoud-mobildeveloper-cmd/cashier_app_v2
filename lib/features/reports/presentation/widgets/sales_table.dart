@@ -25,6 +25,7 @@ class SalesTable extends StatelessWidget {
 
   // invoice, date, cashier, items, total, method, status
   static const _flexes = [2, 2, 2, 1, 2, 2, 2];
+  static const double _tableMinWidth = 1000.0;
 
   Color _methodColor(PaymentMethod method) {
     switch (method) {
@@ -54,23 +55,31 @@ class SalesTable extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: 1000,
-              child: Column(
-                children: [
-                  _headerRow(),
-                  if (rows.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Text('لا توجد فواتير مطابقة', style: TextStyle(color: AppColors.textSecondary)),
-                    )
-                  else
-                    ...rows.map(_dataRow),
-                ],
-              ),
-            ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final actualWidth = constraints.maxWidth > _tableMinWidth
+                  ? constraints.maxWidth
+                  : _tableMinWidth;
+
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: actualWidth,
+                  child: Column(
+                    children: [
+                      _headerRow(),
+                      if (rows.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(32),
+                          child: Text('لا توجد فواتير مطابقة', style: TextStyle(color: AppColors.textSecondary)),
+                        )
+                      else
+                        ...rows.map(_dataRow),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),

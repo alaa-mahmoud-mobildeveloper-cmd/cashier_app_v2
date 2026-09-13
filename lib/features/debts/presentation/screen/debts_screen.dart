@@ -92,26 +92,66 @@ class _DebtsScreenState extends State<DebtsScreen> {
   }
 
   Widget _table() {
+    const double tableMinWidth = 1000.0;
+
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SizedBox(
-          width: 1120,
-          child: Column(children: [
-            _tableHeader(),
-            if (filteredInvoices.isEmpty)
-              const Padding(padding: EdgeInsets.all(32), child: Text('لا توجد فواتير مطابقة', style: TextStyle(color: AppColors.textSecondary)))
-            else
-              ...filteredInvoices.map((invoice) => DebtInvoiceRow(invoice: invoice, onView: () {})),
-          ]),
-        ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final actualWidth = constraints.maxWidth > tableMinWidth
+              ? constraints.maxWidth
+              : tableMinWidth;
+
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: actualWidth,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _tableHeader(),
+                  if (filteredInvoices.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Center(
+                        child: Text(
+                          'لا توجد فواتير مطابقة',
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                      ),
+                    )
+                  else
+                    ...filteredInvoices.map(
+                          (invoice) => DebtInvoiceRow(
+                        invoice: invoice,
+                        onView: () {},
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 
   Widget _tableHeader() {
-    const headers = ['رقم الفاتورة', 'التاريخ', 'العميل', 'الإجمالي', 'المدفوع', 'المتبقي', 'الحالة', ''];
-    return Container(padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16), color: AppColors.surfaceLight, child: Row(children: headers.map((header) => Expanded(flex: header.isEmpty ? 2 : 2, child: Text(header, style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)))).toList()));
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      color: AppColors.surfaceLight,
+      child: const Row(
+        children: [
+          SizedBox(width: 120, child: Text('رقم الفاتورة', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600))),
+          SizedBox(width: 130, child: Text('التاريخ', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600))),
+          Expanded(flex: 2, child: Text('العميل', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600))),
+          SizedBox(width: 100, child: Text('الإجمالي', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600))),
+          SizedBox(width: 100, child: Text('المدفوع', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600))),
+          SizedBox(width: 100, child: Text('المتبقي', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600))),
+          SizedBox(width: 110, child: Text('الحالة', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600))),
+          SizedBox(width: 70, child: Text('', style: TextStyle(color: AppColors.textSecondary))),
+        ],
+      ),
+    );
   }
 }

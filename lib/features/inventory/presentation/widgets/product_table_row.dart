@@ -2,8 +2,6 @@ import 'package:cashier_app_v2/features/inventory/data/models/product_item.dart'
 import 'package:cashier_app_v2/features/inventory/data/uitl/category_icon.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
-
-import '../../data/models/product_table_columns.dart';
 import 'status_badge.dart';
 
 class ProductTableRow extends StatelessWidget {
@@ -20,11 +18,12 @@ class ProductTableRow extends StatelessWidget {
     this.onTrend,
   });
 
-  // عمود بعرض ثابت بدل Expanded/flex، عشان يتساوى بالظبط مع الهيدر
-  // ومياخدش مساحة أكبر من اللي مرسومله حتى لو الشاشة ضيقة.
-  Widget _cell(Widget child, double width) {
-    return SizedBox(
-      width: width,
+  // يجب أن تتطابق هذه النسب تماماً مع مصفوفة الـ flexes الموجودة في الـ Header والـ Table
+  static const _flexes = [1, 3, 2, 2, 2, 2, 2, 2, 2, 2];
+
+  Widget _cell(Widget child, int flex) {
+    return Expanded(
+      flex: flex,
       child: Center(child: child),
     );
   }
@@ -56,20 +55,19 @@ class ProductTableRow extends StatelessWidget {
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
           // الصورة
           _cell(
             Container(
-              width: 44,
-              height: 44,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: AppColors.goldSurface,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(categoryIcon(item.category), color: AppColors.gold, size: 20),
+              child: Icon(categoryIcon(item.category), color: AppColors.gold, size: 18),
             ),
-            ProductTableColumns.image as double,
+            _flexes[0],
           ),
           // اسم الصنف
           _cell(
@@ -84,7 +82,7 @@ class ProductTableRow extends StatelessWidget {
                 fontSize: 13,
               ),
             ),
-            ProductTableColumns.name as double,
+            _flexes[1],
           ),
           // الباركود
           _cell(
@@ -94,7 +92,7 @@ class ProductTableRow extends StatelessWidget {
               maxLines: 1,
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
-            ProductTableColumns.barcode as double,
+            _flexes[2],
           ),
           // الفئة
           _cell(
@@ -104,7 +102,7 @@ class ProductTableRow extends StatelessWidget {
               maxLines: 1,
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
-            ProductTableColumns.category as double,
+            _flexes[3],
           ),
           // سعر البيع
           _cell(
@@ -113,10 +111,10 @@ class ProductTableRow extends StatelessWidget {
               style: const TextStyle(
                 color: AppColors.gold,
                 fontWeight: FontWeight.bold,
-                fontSize: 15,
+                fontSize: 14,
               ),
             ),
-            ProductTableColumns.sellPrice as double,
+            _flexes[4],
           ),
           // التكلفة/وحدة
           _cell(
@@ -124,7 +122,7 @@ class ProductTableRow extends StatelessWidget {
               item.unitCost.toStringAsFixed(2),
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
-            ProductTableColumns.unitCost as double,
+            _flexes[5],
           ),
           // كرتونة
           _cell(
@@ -142,7 +140,7 @@ class ProductTableRow extends StatelessWidget {
                 ),
               ],
             ),
-            ProductTableColumns.carton as double,
+            _flexes[6],
           ),
           // الكمية
           _cell(
@@ -151,18 +149,19 @@ class ProductTableRow extends StatelessWidget {
               style: const TextStyle(
                 color: AppColors.textPrimary,
                 fontWeight: FontWeight.bold,
-                fontSize: 15,
+                fontSize: 14,
               ),
             ),
-            ProductTableColumns.quantity as double,
+            _flexes[7],
           ),
           // الحالة
-          _cell(StatusBadge(status: item.status), ProductTableColumns.status as double),
+          _cell(StatusBadge(status: item.status), _flexes[8]),
           // إجراءات
           _cell(
             Row(
               mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              spacing: 10,
               children: [
                 _actionButton(onPressed: onPrint, icon: Icons.print_outlined),
                 _actionButton(onPressed: onEdit, icon: Icons.edit_outlined),
@@ -174,7 +173,7 @@ class ProductTableRow extends StatelessWidget {
                 ),
               ],
             ),
-            ProductTableColumns.actions as double,
+            _flexes[9],
           ),
         ],
       ),

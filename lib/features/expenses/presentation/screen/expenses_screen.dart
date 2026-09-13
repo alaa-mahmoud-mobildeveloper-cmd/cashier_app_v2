@@ -215,7 +215,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SizedBox(
-          width: 1050,
+          width: 1200,
           child: Column(
             children: [
               Container(

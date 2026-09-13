@@ -98,7 +98,8 @@ class ExpenseRow extends StatelessWidget {
           SizedBox(
             width: 160, // تأكد من تعديلها من 128 إلى 160 هنا وفي رأس الجدول
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.start,
+              spacing: 10,
               children: [
                 IconButton(
                   onPressed: onView,
