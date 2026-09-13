@@ -1,4 +1,5 @@
 import 'package:cashier_app_v2/features/dashbord/presentation/screen/dashboard_screen.dart';
+import 'package:cashier_app_v2/features/reports/presentation/screen/sales_report_screen.dart';
 import 'package:flutter/material.dart';
 
 import 'package:cashier_app_v2/core/constants/app_colors.dart';
@@ -8,7 +9,6 @@ import 'package:cashier_app_v2/features/debts/presentation/screen/debts_screen.d
 import 'package:cashier_app_v2/features/expenses/presentation/screen/expenses_screen.dart';
 import 'package:cashier_app_v2/features/inventory/presentation/screen/inventory_screen.dart';
 import 'package:cashier_app_v2/features/pos/presentation/screen/pos_screen.dart';
-import 'package:cashier_app_v2/features/reports/presentation/screen/report_screen.dart';
 import 'package:cashier_app_v2/features/workers/presentation/screen/workers_screen.dart';
 
 import '../widgets/sidebar_menu.dart';
@@ -29,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const PosScreen(),
     const DebtsScreen(),
     const DashboardScreen(),
-    const ReportScreen(),
+    const SalesReportScreen(),
     const InventoryScreen(),
     const WorkersScreen(),
     const ExpensesScreen(),
