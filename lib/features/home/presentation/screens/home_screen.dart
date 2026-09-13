@@ -1,3 +1,4 @@
+import 'package:cashier_app_v2/features/dashbord/presentation/screen/dashboard_screen.dart';
 import 'package:flutter/material.dart';
 
 import 'package:cashier_app_v2/core/constants/app_colors.dart';
@@ -10,7 +11,6 @@ import 'package:cashier_app_v2/features/pos/presentation/screen/pos_screen.dart'
 import 'package:cashier_app_v2/features/reports/presentation/screen/report_screen.dart';
 import 'package:cashier_app_v2/features/workers/presentation/screen/workers_screen.dart';
 
-import '../widgets/dashboard_placeholder.dart';
 import '../widgets/sidebar_menu.dart';
 
 /// الشاشة الرئيسية المسؤولة عن التنقل بين جميع أقسام التطبيق.
@@ -28,7 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Widget> _screens = [
     const PosScreen(),
     const DebtsScreen(),
-    const DashboardPlaceholder(),
+    const DashboardScreen(),
     const ReportScreen(),
     const InventoryScreen(),
     const WorkersScreen(),
