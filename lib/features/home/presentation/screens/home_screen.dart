@@ -1,4 +1,5 @@
 import 'package:cashier_app_v2/features/dashbord/presentation/screen/dashboard_screen.dart';
+import 'package:cashier_app_v2/features/inventory/presentation/screen/products_screen.dart';
 import 'package:cashier_app_v2/features/reports/presentation/screen/sales_report_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -7,7 +8,6 @@ import 'package:cashier_app_v2/core/constants/app_routes.dart';
 import 'package:cashier_app_v2/features/closing/presentation/screen/closing_screen.dart';
 import 'package:cashier_app_v2/features/debts/presentation/screen/debts_screen.dart';
 import 'package:cashier_app_v2/features/expenses/presentation/screen/expenses_screen.dart';
-import 'package:cashier_app_v2/features/inventory/presentation/screen/inventory_screen.dart';
 import 'package:cashier_app_v2/features/pos/presentation/screen/pos_screen.dart';
 import 'package:cashier_app_v2/features/workers/presentation/screen/workers_screen.dart';
 
@@ -30,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const DebtsScreen(),
     const DashboardScreen(),
     const SalesReportScreen(),
-    const InventoryScreen(),
+    const ProductsScreen(),
     const WorkersScreen(),
     const ExpensesScreen(),
     const ClosingScreen(),
