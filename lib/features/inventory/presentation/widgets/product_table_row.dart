@@ -1,8 +1,10 @@
-import 'package:cashier_app_v2/features/inventory/data/models/product_item.dart';
-import 'package:cashier_app_v2/features/inventory/data/uitl/category_icon.dart';
+import 'package:cashier_app_v2/features/inventory/domain/entities/product_items_entit.dart';
+import 'package:cashier_app_v2/features/inventory/presentation/uitl/category_icon.dart';
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
+
+import 'product_table_columns.dart';
 import 'status_badge.dart';
+import 'package:cashier_app_v2/core/constants/app_colors.dart';
 
 class ProductTableRow extends StatelessWidget {
   final ProductItem item;
@@ -18,8 +20,8 @@ class ProductTableRow extends StatelessWidget {
     this.onTrend,
   });
 
-  // يجب أن تتطابق هذه النسب تماماً مع مصفوفة الـ flexes الموجودة في الـ Header والـ Table
-  static const _flexes = [1, 3, 2, 2, 2, 2, 2, 2, 2, 2];
+  // نفس مصدر الأعمدة اللي بيستخدمه الـ Header، عشان يفضلوا متطابقين دايمًا.
+  static final _flexes = ProductTableColumns.flexes;
 
   Widget _cell(Widget child, int flex) {
     return Expanded(
@@ -49,6 +51,11 @@ class ProductTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final profit = item.profit;
+    final marginColor = profit < 0
+        ? AppColors.danger
+        : (profit == 0 ? AppColors.textSecondary : AppColors.success);
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: const BoxDecoration(
@@ -116,13 +123,35 @@ class ProductTableRow extends StatelessWidget {
             ),
             _flexes[4],
           ),
-          // التكلفة/وحدة
+          // سعر شراء الوحدة (محسوب تلقائيًا من الكرتونة)
           _cell(
             Text(
               item.unitCost.toStringAsFixed(2),
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
             _flexes[5],
+          ),
+          // هامش الربح
+          _cell(
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${item.profitMarginPercent.toStringAsFixed(1)}%',
+                  style: TextStyle(
+                    color: marginColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${profit.toStringAsFixed(2)} ج',
+                  style: TextStyle(color: marginColor, fontSize: 11),
+                ),
+              ],
+            ),
+            _flexes[6],
           ),
           // كرتونة
           _cell(
@@ -140,7 +169,7 @@ class ProductTableRow extends StatelessWidget {
                 ),
               ],
             ),
-            _flexes[6],
+            _flexes[7],
           ),
           // الكمية
           _cell(
@@ -152,10 +181,10 @@ class ProductTableRow extends StatelessWidget {
                 fontSize: 14,
               ),
             ),
-            _flexes[7],
+            _flexes[8],
           ),
           // الحالة
-          _cell(StatusBadge(status: item.status), _flexes[8]),
+          _cell(StatusBadge(status: item.status), _flexes[9]),
           // إجراءات
           _cell(
             Row(
@@ -173,7 +202,7 @@ class ProductTableRow extends StatelessWidget {
                 ),
               ],
             ),
-            _flexes[9],
+            _flexes[10],
           ),
         ],
       ),

@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../data/models/product_table_columns.dart';
+
+import 'package:cashier_app_v2/core/constants/app_colors.dart';
+import 'product_table_columns.dart';
 
 class ProductsTableHeader extends StatelessWidget {
   const ProductsTableHeader({super.key});
-
-  // نسب التوزيع للأعمدة لتتجاوب مع الشاشة وتتطابق مع الصفوف
-  static const _flexes = [1, 3, 2, 2, 2, 2, 2, 2, 2, 2];
 
   Widget _cell(String text, int flex) {
     return Expanded(
@@ -27,29 +25,15 @@ class ProductsTableHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const headers = [
-      'الصورة',
-      'اسم الصنف',
-      'الباركود',
-      'الفئة',
-      'سعر البيع',
-      'التكلفة/وحدة',
-      'كرتونة',
-      'الكمية',
-      'الحالة',
-      'إجراءات',
-    ];
-
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Row(
-        children: List.generate(
-          headers.length,
-              (i) => _cell(headers[i], _flexes[i]),
-        ),
+        children: [
+          for (final col in ProductTableColumns.columns) _cell(col.label, col.flex),
+        ],
       ),
     );
   }

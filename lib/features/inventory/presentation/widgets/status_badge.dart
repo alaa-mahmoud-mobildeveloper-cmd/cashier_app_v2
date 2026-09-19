@@ -1,5 +1,7 @@
-import 'package:cashier_app_v2/features/inventory/data/models/product_status.dart';
+import 'package:cashier_app_v2/features/inventory/presentation/uitl/product_status_style.dart';
 import 'package:flutter/material.dart';
+
+import '../../domain/entities/product_status.dart';
 
 
 class StatusBadge extends StatelessWidget {

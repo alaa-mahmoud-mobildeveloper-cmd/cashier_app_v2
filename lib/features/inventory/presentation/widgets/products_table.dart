@@ -1,7 +1,8 @@
-import 'package:cashier_app_v2/core/constants/app_colors.dart';
-import 'package:cashier_app_v2/features/inventory/data/models/product_item.dart';
+import 'package:cashier_app_v2/features/inventory/domain/entities/product_items_entit.dart';
 import 'package:flutter/material.dart';
-// أو المسار الصحيح لديك
+
+import 'package:cashier_app_v2/core/constants/app_colors.dart';
+
 import 'product_table_row.dart';
 import 'products_table_header.dart';
 
@@ -11,8 +12,8 @@ class ProductsTable extends StatelessWidget {
 
   const ProductsTable({super.key, required this.items, this.onEdit});
 
-  // أقل عرض مسموح للجدول قبل ظهور شريط التمرير الأفقي على الشاشات الصغيرة
-  static const double _tableMinWidth = 1000.0;
+  // أقل عرض مسموح للجدول قبل ظهور شريط التمرير الأفقي على الشاشات الصغيرة.
+  static const double _tableMinWidth = 1120.0;
 
   @override
   Widget build(BuildContext context) {

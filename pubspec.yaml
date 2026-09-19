@@ -14,6 +14,11 @@ dependencies:
   # State Management
   flutter_bloc: ^8.1.6
   equatable: ^2.0.5
+  drift: ^2.20.3
+  drift_flutter: ^0.2.3
+  sqlite3_flutter_libs: ^0.5.24
+  path_provider: ^2.1.4
+  path: ^1.9.0
 
   # Dependency Injection
   injectable: ^2.5.0
@@ -32,6 +37,7 @@ dev_dependencies:
   flutter_lints: ^4.0.0
   injectable_generator: ^2.10.0
   build_runner: ^2.4.13
+  drift_dev: ^2.20.3
 
 flutter:
 

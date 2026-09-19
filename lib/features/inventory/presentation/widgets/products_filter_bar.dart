@@ -1,5 +1,6 @@
-import 'package:cashier_app_v2/features/inventory/data/models/product_status.dart';
 import 'package:flutter/material.dart';
+
+import '../../domain/entities/product_status.dart';
 import 'category_dropdown.dart';
 import 'filter_chip_button.dart';
 import 'product_search_field.dart';
@@ -58,7 +59,6 @@ class ProductsFilterBar extends StatelessWidget {
         );
 
         if (isNarrow) {
-          // شاشات صغيرة: كل عنصر في صف لوحده
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -71,7 +71,6 @@ class ProductsFilterBar extends StatelessWidget {
           );
         }
 
-        // شاشات كبيرة: صف واحد (البحث ياخد المساحة المتبقية يمين الشاشة)
         return Row(
           children: [
             Expanded(child: search),

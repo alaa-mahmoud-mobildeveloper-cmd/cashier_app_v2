@@ -1,146 +1,66 @@
-import 'package:cashier_app_v2/features/inventory/data/models/product_item.dart';
-import 'package:cashier_app_v2/features/inventory/data/models/product_status.dart';
-import 'package:cashier_app_v2/features/inventory/presentation/widgets/add_product_dialog.dart';
+import 'package:cashier_app_v2/di.dart';
+import 'package:cashier_app_v2/features/inventory/domain/entities/product_items_entit.dart';
+import 'package:cashier_app_v2/features/inventory/presentation/bloc/product_bloc.dart';
+import 'package:cashier_app_v2/features/inventory/presentation/bloc/product_event.dart';
+import 'package:cashier_app_v2/features/inventory/presentation/bloc/product_state.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+// عدّل الاستيراد ده على مسار ملف تسجيل injectable عندك لو اسمه مختلف
+// (غالبًا injection.dart، واللي بيصدّر `getIt`).
+
+import '../../domain/usecases/add_product.dart';
+import '../../domain/usecases/get_products.dart';
+import '../../domain/usecases/update_product.dart';
+import '../../domain/usecases/watch_products.dart';
+
+import '../widgets/add_product_dialog.dart';
 import '../widgets/products_filter_bar.dart';
 import '../widgets/products_header.dart';
 import '../widgets/products_table.dart';
 
-class ProductsScreen extends StatefulWidget {
+/// نقطة الدخول للشاشة. بتجيب الـ UseCases من getIt، فبقت متصلة فعليًا
+/// بـ DriftProductRepository (والـ AppDatabase الحقيقية) بدل
+/// InMemoryProductRepository اللي كانت بتفقد البيانات كل مرة.
+class ProductsScreen extends StatelessWidget {
   const ProductsScreen({super.key});
 
+  static const _categories = ['مواد غذائية', 'مشروبات', 'منظفات', 'ألبان'];
+
   @override
-  State<ProductsScreen> createState() => _ProductsScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => ProductsBloc(
+        getProducts: getIt<GetProducts>(),
+        watchProducts: getIt<WatchProducts>(),
+        addProduct: getIt<AddProduct>(),
+        updateProduct: getIt<UpdateProduct>(),
+        categories: _categories,
+      )..add(const ProductsStarted()),
+      child: const _ProductsView(),
+    );
+  }
 }
 
-class _ProductsScreenState extends State<ProductsScreen> {
-  static const _allCategoriesLabel = 'كل الفئات';
+class _ProductsView extends StatelessWidget {
+  const _ProductsView();
 
-  final List<String> _categories = const [
-    'مواد غذائية',
-    'مشروبات',
-    'منظفات',
-    'ألبان',
-  ];
+  Future<void> _openAddDialog(BuildContext context, {ProductItem? editing}) async {
+    final bloc = context.read<ProductsBloc>();
+    final categories = bloc.state.categories;
 
-  // بيانات تجريبية مطابقة للتصميم
-  final List<ProductItem> _products = [
-    const ProductItem(
-      id: '1',
-      name: 'زيت عباد الشمس 1.5 لتر',
-      barcode: '6001',
-      category: 'مواد غذائية',
-      sellPrice: 28,
-      unitCost: 20.00,
-      cartonPrice: 230,
-      unitsPerCarton: 12,
-      quantity: 45,
-    ),
-    const ProductItem(
-      id: '2',
-      name: 'سكر أبيض 1 كجم',
-      barcode: '6002',
-      category: 'مواد غذائية',
-      sellPrice: 12,
-      unitCost: 8.00,
-      cartonPrice: 155,
-      unitsPerCarton: 20,
-      quantity: 3,
-    ),
-    const ProductItem(
-      id: '3',
-      name: 'شاي ليبتون 100 كيس',
-      barcode: '6003',
-      category: 'مشروبات',
-      sellPrice: 45,
-      unitCost: 32.00,
-      cartonPrice: 188,
-      unitsPerCarton: 6,
-      quantity: 0,
-    ),
-    const ProductItem(
-      id: '4',
-      name: 'أرز بسمتي 5 كجم',
-      barcode: '6004',
-      category: 'مواد غذائية',
-      sellPrice: 85,
-      unitCost: 60.00,
-      cartonPrice: 235,
-      unitsPerCarton: 4,
-      quantity: 22,
-    ),
-    const ProductItem(
-      id: '5',
-      name: 'صابون اريل 3 كجم',
-      barcode: '6005',
-      category: 'منظفات',
-      sellPrice: 55,
-      unitCost: 38.00,
-      cartonPrice: 224,
-      unitsPerCarton: 6,
-      quantity: 5,
-    ),
-    const ProductItem(
-      id: '6',
-      name: 'حليب بارمالات 1 لتر',
-      barcode: '6006',
-      category: 'ألبان',
-      sellPrice: 18,
-      unitCost: 13.00,
-      cartonPrice: 152,
-      unitsPerCarton: 12,
-      quantity: 60,
-    ),
-    const ProductItem(
-      id: '7',
-      name: 'ماء معدني 1.5 لتر',
-      barcode: '6007',
-      category: 'مشروبات',
-      sellPrice: 5,
-      unitCost: 2.50,
-      cartonPrice: 28,
-      unitsPerCarton: 12,
-      quantity: 120,
-    ),
-  ];
-
-  ProductFilter _selectedFilter = ProductFilter.all;
-  String _selectedCategory = _allCategoriesLabel;
-  String _searchQuery = '';
-
-  List<ProductItem> get _filteredProducts {
-    return _products.where((p) {
-      final matchesFilter = _selectedFilter.matches(p.status);
-      final matchesCategory =
-          _selectedCategory == _allCategoriesLabel || p.category == _selectedCategory;
-      final query = _searchQuery.trim();
-      final matchesSearch = query.isEmpty ||
-          p.name.contains(query) ||
-          p.barcode.contains(query);
-      return matchesFilter && matchesCategory && matchesSearch;
-    }).toList();
-  }
-
-  Future<void> _openAddDialog({ProductItem? editing}) async {
     final result = await showDialog<ProductItem>(
       context: context,
-      builder: (_) => AddProductDialog(
-        categories: _categories,
-        initial: editing,
-      ),
+      builder: (_) => AddProductDialog(categories: categories, initial: editing),
     );
 
     if (result == null) return;
 
-    setState(() {
-      if (editing != null) {
-        final index = _products.indexWhere((p) => p.id == editing.id);
-        if (index != -1) _products[index] = result;
-      } else {
-        _products.insert(0, result);
-      }
-    });
+    if (editing != null) {
+      bloc.add(ProductUpdateRequested(result));
+    } else {
+      bloc.add(ProductAddRequested(result));
+    }
   }
 
   @override
@@ -148,33 +68,52 @@ class _ProductsScreenState extends State<ProductsScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        // خلفية الشاشة بتيجي من scaffoldBackgroundColor في AppTheme
         body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ProductsHeader(
-                  itemsCount: _products.length,
-                  onAddPressed: () => _openAddDialog(),
+          child: BlocBuilder<ProductsBloc, ProductsState>(
+            builder: (context, state) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ProductsHeader(
+                      itemsCount: state.products.length,
+                      onAddPressed: () => _openAddDialog(context),
+                    ),
+                    const SizedBox(height: 20),
+                    ProductsFilterBar(
+                      selectedFilter: state.selectedFilter,
+                      onFilterChanged: (f) =>
+                          context.read<ProductsBloc>().add(ProductsFilterChanged(f)),
+                      selectedCategory: state.selectedCategory,
+                      categories: [ProductsState.allCategoriesLabel, ...state.categories],
+                      onCategoryChanged: (c) =>
+                          context.read<ProductsBloc>().add(ProductsCategoryChanged(c)),
+                      onSearchChanged: (q) =>
+                          context.read<ProductsBloc>().add(ProductsSearchChanged(q)),
+                    ),
+                    const SizedBox(height: 20),
+                    if (state.status == ProductsStatus.loading && state.products.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 48),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else if (state.status == ProductsStatus.failure)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 48),
+                        child: Center(
+                          child: Text(state.errorMessage ?? 'حصل خطأ غير متوقع'),
+                        ),
+                      )
+                    else
+                      ProductsTable(
+                        items: state.filteredProducts,
+                        onEdit: (item) => _openAddDialog(context, editing: item),
+                      ),
+                  ],
                 ),
-                const SizedBox(height: 20),
-                ProductsFilterBar(
-                  selectedFilter: _selectedFilter,
-                  onFilterChanged: (f) => setState(() => _selectedFilter = f),
-                  selectedCategory: _selectedCategory,
-                  categories: [_allCategoriesLabel, ..._categories],
-                  onCategoryChanged: (c) => setState(() => _selectedCategory = c),
-                  onSearchChanged: (q) => setState(() => _searchQuery = q),
-                ),
-                const SizedBox(height: 20),
-                ProductsTable(
-                  items: _filteredProducts,
-                  onEdit: (item) => _openAddDialog(editing: item),
-                ),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),
