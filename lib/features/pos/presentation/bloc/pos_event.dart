@@ -57,3 +57,10 @@ class CheckoutCart extends CartEvent {
 class ClearCart extends CartEvent {
   const ClearCart();
 }
+class ReturnInvoiceEvent extends CartEvent {
+  final int? invoiceId;
+  const ReturnInvoiceEvent([this.invoiceId]);
+
+  @override
+  List<Object?> get props => [invoiceId];
+}

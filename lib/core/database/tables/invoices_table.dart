@@ -1,3 +1,4 @@
+import 'package:cashier_app_v2/core/database/tables/customers_table.dart';
 import 'package:cashier_app_v2/core/database/tables/users_table.dart';
 import 'package:drift/drift.dart';
 
@@ -12,6 +13,10 @@ class Invoices extends Table {
   /// الكاشير
   IntColumn get userId =>
       integer().references(Users, #id)();
+
+  /// العميل (اختياري - بيتسجل غالبًا مع فواتير الآجل)
+  IntColumn get customerId =>
+      integer().nullable().references(Customers, #id)();
 
   /// إجمالي المنتجات قبل الخصم
   RealColumn get totalAmount => real()();

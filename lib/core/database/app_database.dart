@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cashier_app_v2/core/database/tables/app_settings.dart';
+import 'package:cashier_app_v2/core/database/tables/customers_table.dart';
 import 'package:cashier_app_v2/core/database/tables/dailyclosing.dart';
 import 'package:cashier_app_v2/core/database/tables/expenses.dart';
 import 'package:cashier_app_v2/core/database/tables/purchase_items.dart';
@@ -33,13 +34,14 @@ part 'app_database.g.dart';
     PurchaseItems,
     Expenses,
     DailyClosings,
+    Customers,
     AppSettings,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   @override
-  int get schemaVersion => 12;   // كانت 11
+  int get schemaVersion => 13;   // كانت 12
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -54,6 +56,10 @@ class AppDatabase extends _$AppDatabase {
 
       if (from < 3) {
         await m.createTable(suppliers);
+      }
+
+      if (from < 12) {
+        await m.createTable(customers);
       }
 
       if (from < 4) {
@@ -83,6 +89,12 @@ class AppDatabase extends _$AppDatabase {
       if (from < 12) {
         await m.addColumn(products, products.cartonPrice);
         await m.addColumn(products, products.unitsPerCarton);
+      }
+
+      // Version 13
+      // ربط الفاتورة بعميل مسجَّل (اختياري) عشان شاشة الآجل والمديونيات
+      if (from < 13) {
+        await m.addColumn(invoices, invoices.customerId);
       }
     },
   );

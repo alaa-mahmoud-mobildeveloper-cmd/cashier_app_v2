@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:cashier_app_v2/core/database/app_database.dart';
 import 'package:cashier_app_v2/features/pos/presentation/bloc/pos_event.dart';
 import 'package:cashier_app_v2/features/pos/presentation/bloc/pos_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -10,7 +13,8 @@ import 'package:injectable/injectable.dart';
 class CartBloc extends Bloc<CartEvent, CartState> {
   final SalesRepository _salesRepository;
   final SessionProvider _session;
-
+  // هنا بالضبط
+  StreamSubscription<List<Product>>? _productsSubscription;
   CartBloc(this._salesRepository, this._session) : super(const CartState()) {
     on<LoadProducts>(_loadProducts);
     on<AddProductToCart>(_addProduct);
@@ -19,8 +23,40 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     on<ApplyDiscount>(_applyDiscount);
     on<CheckoutCart>(_checkout);
     on<ClearCart>(_clearCart);
-  }
+    on<ReturnInvoiceEvent>(_returnInvoice);
 
+    _productsSubscription = _salesRepository.watchAllProducts().listen((products) {
+      add(const LoadProducts());
+    });
+
+  }
+  Future<void> _returnInvoice(
+      ReturnInvoiceEvent event,
+      Emitter<CartState> emit,
+      ) async {
+    emit(state.copyWith(status: CartStatus.loading));
+
+    try {
+      // استدعاء دالة الإرجاع من الـ Repository وإرسال الـ ID لو موجود
+      await _salesRepository.returnInvoice(
+        userId: _session.currentUserId,
+        invoiceId: event.invoiceId,
+      );
+
+      // إعادة تحميل المنتجات عشان كميات المخزون تحدث في الشاشة فوراً
+      final products =  _salesRepository.getAllProducts();
+
+      emit(
+        state.copyWith(
+          status: CartStatus.success,
+          products: await products,
+          errorMessage: null,
+        ),
+      );
+    } catch (e) {
+      _error(emit, e.toString());
+    }
+  }
   Future<void> _loadProducts(LoadProducts event, Emitter<CartState> emit) async {
     emit(state.copyWith(status: CartStatus.loading));
     try {

@@ -5,13 +5,17 @@ class PosHeader extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onSearch;
   final VoidCallback? onReturn;
+  final ValueChanged<String>? onSubmitted;
 
   const PosHeader({
     super.key,
     required this.controller,
     required this.onSearch,
+    required this.onSubmitted,
     this.onReturn,
   });
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +27,7 @@ class PosHeader extends StatelessWidget {
             child: TextField(
               controller: controller,
               onChanged: onSearch,
-              onSubmitted: onSearch,
+              onSubmitted: onSubmitted, // تأكد من استقبالها لو حابب تفصلها، أو خليه يستدعي onSearch
               textInputAction: TextInputAction.search,
               decoration: const InputDecoration(
                 hintText: 'ابحث بالاسم أو امسح الباركود',

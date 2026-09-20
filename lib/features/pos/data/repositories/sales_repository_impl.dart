@@ -14,11 +14,16 @@ class SalesRepositoryImpl implements SalesRepository {
   Future<List<Product>> getAllProducts() async {
     return await _db.select(_db.products).get();
   }
+  @override
+  Stream<List<Product>> watchAllProducts() {
+    return _db.select(_db.products).watch();
+  }
 
   @override
   Future<Product?> getProductByBarcode(String barcode) async {
     final query = _db.select(_db.products)
       ..where((p) => p.barcode.equals(barcode));
+
     return await query.getSingleOrNull();
   }
 
@@ -58,11 +63,13 @@ class SalesRepositoryImpl implements SalesRepository {
         if (product == null) {
           throw Exception('المنتج غير موجود: ${item.product.name}');
         }
+
         if (product.stockQuantity < item.quantity) {
           throw Exception('المخزون غير كافي للمنتج ${product.name}');
         }
 
         products[product.id] = product;
+
         totalProfit +=
             (product.price - product.purchasePrice) * item.quantity;
       }
@@ -84,8 +91,10 @@ class SalesRepositoryImpl implements SalesRepository {
 
       for (final item in cartItems) {
         final product = products[item.product.id]!;
+
         final itemProfit =
             (product.price - product.purchasePrice) * item.quantity;
+
         final itemTotal = product.price * item.quantity;
 
         await _db.into(_db.invoiceItems).insert(
@@ -108,7 +117,9 @@ class SalesRepositoryImpl implements SalesRepository {
           ..where((p) => p.id.equals(product.id)))
             .write(
           ProductsCompanion(
-            stockQuantity: Value(product.stockQuantity - item.quantity),
+            stockQuantity: Value(
+              product.stockQuantity - item.quantity,
+            ),
           ),
         );
 
@@ -126,4 +137,99 @@ class SalesRepositoryImpl implements SalesRepository {
       return invoiceId;
     });
   }
+
+  @override
+  Future<List<Invoice>> getRecentInvoices() async {
+    return await (_db.select(_db.invoices)
+      ..orderBy([
+            (invoice) => OrderingTerm(
+          expression: invoice.createdAt,
+          mode: OrderingMode.desc,
+        ),
+      ])
+      ..limit(3))
+        .get();
+  }
+
+  @override
+  Future<int> returnInvoice({
+    required int userId,
+    int? invoiceId,
+  }) async {
+    return await _db.transaction(() async {
+      // لو تم تمرير ID معين نجيبه، وإلا نجيب آخر فاتورة
+      final targetInvoice = invoiceId != null
+          ? await (_db.select(_db.invoices)
+        ..where((i) => i.id.equals(invoiceId)))
+          .getSingleOrNull()
+          : await (_db.select(_db.invoices)
+        ..orderBy([
+              (invoice) => OrderingTerm(
+            expression: invoice.createdAt,
+            mode: OrderingMode.desc,
+          ),
+        ])
+        ..limit(1))
+          .getSingleOrNull();
+
+      if (targetInvoice == null) {
+        throw Exception('لا توجد فواتير');
+      }
+
+      if (targetInvoice.status == 'returned') {
+        throw Exception(
+          'الفاتورة ${targetInvoice.invoiceNumber} تم إرجاعها بالفعل',
+        );
+      }
+
+      final invoiceItems = await (_db.select(_db.invoiceItems)
+        ..where((item) => item.invoiceId.equals(targetInvoice.id)))
+          .get();
+
+      if (invoiceItems.isEmpty) {
+        throw Exception(
+          'الفاتورة ${targetInvoice.invoiceNumber} لا تحتوي على أصناف',
+        );
+      }
+
+      // إعادة الكميات للمخزون
+      for (final item in invoiceItems) {
+        final product = await (_db.select(_db.products)
+          ..where((p) => p.id.equals(item.productId)))
+            .getSingleOrNull();
+
+        if (product == null) {
+          throw Exception('المنتج غير موجود: ${item.productName}');
+        }
+
+        final newStock = product.stockQuantity + item.quantity;
+
+        await (_db.update(_db.products)
+          ..where((p) => p.id.equals(product.id)))
+            .write(
+          ProductsCompanion(stockQuantity: Value(newStock)),
+        );
+
+        await _db.into(_db.stockMovements).insert(
+          StockMovementsCompanion.insert(
+            productId: product.id,
+            userId: userId,
+            quantity: item.quantity,
+            type: 'return',
+            note: Value('إرجاع الفاتورة ${targetInvoice.invoiceNumber}'),
+          ),
+        );
+      }
+
+      // تحديث حالة الفاتورة إلى returned
+      await (_db.update(_db.invoices)
+        ..where((invoice) => invoice.id.equals(targetInvoice.id)))
+          .write(
+        const InvoicesCompanion(status: Value('returned')),
+      );
+
+      return targetInvoice.id;
+    });
+  }
+
 }
