@@ -15,6 +15,16 @@ import 'package:injectable/injectable.dart' as _i526;
 
 import 'core/database/app_database.dart' as _i111;
 import 'features/auth/domain/session_provider.dart' as _i764;
+import 'features/dashbord/data/datasources/dashboard_local_data_source.dart'
+    as _i989;
+import 'features/dashbord/data/datasources/dashboard_local_data_source_impl.dart'
+    as _i99;
+import 'features/dashbord/data/repositories/dashboard_repository_impl.dart'
+    as _i102;
+import 'features/dashbord/domain/repositories/dashboard_repository.dart'
+    as _i484;
+import 'features/dashbord/domain/usecases/get_dashboard.dart' as _i68;
+import 'features/dashbord/presentation/bloc/dash_bloc.dart' as _i224;
 import 'features/debts/data/datasources/debt_local_data_source.dart' as _i711;
 import 'features/debts/data/datasources/debt_local_data_source_impl.dart'
     as _i892;
@@ -53,11 +63,17 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i465.SalesRepository>(
       () => _i405.SalesRepositoryImpl(gh<_i111.AppDatabase>()),
     );
+    gh.lazySingleton<_i989.DashboardLocalDataSource>(
+      () => _i99.DashboardLocalDataSourceImpl(gh<_i111.AppDatabase>()),
+    );
     gh.factory<_i87.ProductsLocalDataSource>(
       () => _i87.DriftProductsLocalDataSource(gh<_i111.AppDatabase>()),
     );
     gh.factory<_i711.DebtLocalDataSource>(
       () => _i892.DebtLocalDataSourceImpl(gh<_i111.AppDatabase>()),
+    );
+    gh.factory<_i484.DashboardRepository>(
+      () => _i102.DashboardRepositoryImpl(gh<_i989.DashboardLocalDataSource>()),
     );
     gh.factory<_i448.ProductRepository>(
       () => _i247.DriftProductRepository(gh<_i87.ProductsLocalDataSource>()),
@@ -68,6 +84,9 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i764.SessionProvider>(),
       ),
     );
+    gh.factory<_i68.GetDashboard>(
+      () => _i68.GetDashboard(gh<_i484.DashboardRepository>()),
+    );
     gh.factory<_i245.DebtRepository>(
       () => _i505.DebtRepositoryImpl(gh<_i711.DebtLocalDataSource>()),
     );
@@ -77,6 +96,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i151.PayDebt>(() => _i151.PayDebt(gh<_i245.DebtRepository>()));
     gh.factory<_i657.WatchDebts>(
       () => _i657.WatchDebts(gh<_i245.DebtRepository>()),
+    );
+    gh.factory<_i224.DashboardBloc>(
+      () => _i224.DashboardBloc(gh<_i68.GetDashboard>()),
     );
     gh.factory<_i564.AddProduct>(
       () => _i564.AddProduct(gh<_i448.ProductRepository>()),
