@@ -5,8 +5,14 @@ import 'package:injectable/injectable.dart';
 @injectable
 class GetDashboard {
   final DashboardRepository _repository;
+
   GetDashboard(this._repository);
+
   Future<DashboardModel> call() {
     return _repository.getDashboard();
+  }
+
+  Stream<DashboardModel> watch() {
+    return _repository.watchDashboardData();
   }
 }

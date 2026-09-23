@@ -782,6 +782,18 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
     requiredDuringInsert: false,
     defaultValue: const Constant(1),
   );
+  static const VerificationMeta _cartonQuantityMeta = const VerificationMeta(
+    'cartonQuantity',
+  );
+  @override
+  late final GeneratedColumn<double> cartonQuantity = GeneratedColumn<double>(
+    'carton_quantity',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _stockQuantityMeta = const VerificationMeta(
     'stockQuantity',
   );
@@ -866,6 +878,7 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
     price,
     cartonPrice,
     unitsPerCarton,
+    cartonQuantity,
     stockQuantity,
     minStockLimit,
     isActive,
@@ -950,6 +963,15 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
         unitsPerCarton.isAcceptableOrUnknown(
           data['units_per_carton']!,
           _unitsPerCartonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('carton_quantity')) {
+      context.handle(
+        _cartonQuantityMeta,
+        cartonQuantity.isAcceptableOrUnknown(
+          data['carton_quantity']!,
+          _cartonQuantityMeta,
         ),
       );
     }
@@ -1042,6 +1064,10 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
         DriftSqlType.int,
         data['${effectivePrefix}units_per_carton'],
       )!,
+      cartonQuantity: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}carton_quantity'],
+      )!,
       stockQuantity: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}stock_quantity'],
@@ -1095,6 +1121,14 @@ class Product extends DataClass implements Insertable<Product> {
 
   /// عدد الوحدات في الكرتونة الواحدة.
   final int unitsPerCarton;
+
+  /// عدد الكراتين اللي اتوردت (بيانة توريد، مش بتنقص مع البيع).
+  /// بيتستخدم لحساب stockQuantity تلقائيًا وقت الإضافة/التوريد:
+  /// stockQuantity = cartonQuantity × unitsPerCarton.
+  final double cartonQuantity;
+
+  /// الكمية الفعلية بالوحدة المتاحة للبيع. دي اللي بتنقص مع كل عملية
+  /// بيع، ومستقلة عن cartonQuantity بعد أول حساب.
   final int stockQuantity;
   final int minStockLimit;
   final bool isActive;
@@ -1111,6 +1145,7 @@ class Product extends DataClass implements Insertable<Product> {
     required this.price,
     required this.cartonPrice,
     required this.unitsPerCarton,
+    required this.cartonQuantity,
     required this.stockQuantity,
     required this.minStockLimit,
     required this.isActive,
@@ -1130,6 +1165,7 @@ class Product extends DataClass implements Insertable<Product> {
     map['price'] = Variable<double>(price);
     map['carton_price'] = Variable<double>(cartonPrice);
     map['units_per_carton'] = Variable<int>(unitsPerCarton);
+    map['carton_quantity'] = Variable<double>(cartonQuantity);
     map['stock_quantity'] = Variable<int>(stockQuantity);
     map['min_stock_limit'] = Variable<int>(minStockLimit);
     map['is_active'] = Variable<bool>(isActive);
@@ -1152,6 +1188,7 @@ class Product extends DataClass implements Insertable<Product> {
       price: Value(price),
       cartonPrice: Value(cartonPrice),
       unitsPerCarton: Value(unitsPerCarton),
+      cartonQuantity: Value(cartonQuantity),
       stockQuantity: Value(stockQuantity),
       minStockLimit: Value(minStockLimit),
       isActive: Value(isActive),
@@ -1178,6 +1215,7 @@ class Product extends DataClass implements Insertable<Product> {
       price: serializer.fromJson<double>(json['price']),
       cartonPrice: serializer.fromJson<double>(json['cartonPrice']),
       unitsPerCarton: serializer.fromJson<int>(json['unitsPerCarton']),
+      cartonQuantity: serializer.fromJson<double>(json['cartonQuantity']),
       stockQuantity: serializer.fromJson<int>(json['stockQuantity']),
       minStockLimit: serializer.fromJson<int>(json['minStockLimit']),
       isActive: serializer.fromJson<bool>(json['isActive']),
@@ -1199,6 +1237,7 @@ class Product extends DataClass implements Insertable<Product> {
       'price': serializer.toJson<double>(price),
       'cartonPrice': serializer.toJson<double>(cartonPrice),
       'unitsPerCarton': serializer.toJson<int>(unitsPerCarton),
+      'cartonQuantity': serializer.toJson<double>(cartonQuantity),
       'stockQuantity': serializer.toJson<int>(stockQuantity),
       'minStockLimit': serializer.toJson<int>(minStockLimit),
       'isActive': serializer.toJson<bool>(isActive),
@@ -1218,6 +1257,7 @@ class Product extends DataClass implements Insertable<Product> {
     double? price,
     double? cartonPrice,
     int? unitsPerCarton,
+    double? cartonQuantity,
     int? stockQuantity,
     int? minStockLimit,
     bool? isActive,
@@ -1234,6 +1274,7 @@ class Product extends DataClass implements Insertable<Product> {
     price: price ?? this.price,
     cartonPrice: cartonPrice ?? this.cartonPrice,
     unitsPerCarton: unitsPerCarton ?? this.unitsPerCarton,
+    cartonQuantity: cartonQuantity ?? this.cartonQuantity,
     stockQuantity: stockQuantity ?? this.stockQuantity,
     minStockLimit: minStockLimit ?? this.minStockLimit,
     isActive: isActive ?? this.isActive,
@@ -1258,6 +1299,9 @@ class Product extends DataClass implements Insertable<Product> {
       unitsPerCarton: data.unitsPerCarton.present
           ? data.unitsPerCarton.value
           : this.unitsPerCarton,
+      cartonQuantity: data.cartonQuantity.present
+          ? data.cartonQuantity.value
+          : this.cartonQuantity,
       stockQuantity: data.stockQuantity.present
           ? data.stockQuantity.value
           : this.stockQuantity,
@@ -1283,6 +1327,7 @@ class Product extends DataClass implements Insertable<Product> {
           ..write('price: $price, ')
           ..write('cartonPrice: $cartonPrice, ')
           ..write('unitsPerCarton: $unitsPerCarton, ')
+          ..write('cartonQuantity: $cartonQuantity, ')
           ..write('stockQuantity: $stockQuantity, ')
           ..write('minStockLimit: $minStockLimit, ')
           ..write('isActive: $isActive, ')
@@ -1304,6 +1349,7 @@ class Product extends DataClass implements Insertable<Product> {
     price,
     cartonPrice,
     unitsPerCarton,
+    cartonQuantity,
     stockQuantity,
     minStockLimit,
     isActive,
@@ -1324,6 +1370,7 @@ class Product extends DataClass implements Insertable<Product> {
           other.price == this.price &&
           other.cartonPrice == this.cartonPrice &&
           other.unitsPerCarton == this.unitsPerCarton &&
+          other.cartonQuantity == this.cartonQuantity &&
           other.stockQuantity == this.stockQuantity &&
           other.minStockLimit == this.minStockLimit &&
           other.isActive == this.isActive &&
@@ -1342,6 +1389,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
   final Value<double> price;
   final Value<double> cartonPrice;
   final Value<int> unitsPerCarton;
+  final Value<double> cartonQuantity;
   final Value<int> stockQuantity;
   final Value<int> minStockLimit;
   final Value<bool> isActive;
@@ -1358,6 +1406,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     this.price = const Value.absent(),
     this.cartonPrice = const Value.absent(),
     this.unitsPerCarton = const Value.absent(),
+    this.cartonQuantity = const Value.absent(),
     this.stockQuantity = const Value.absent(),
     this.minStockLimit = const Value.absent(),
     this.isActive = const Value.absent(),
@@ -1375,6 +1424,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     required double price,
     this.cartonPrice = const Value.absent(),
     this.unitsPerCarton = const Value.absent(),
+    this.cartonQuantity = const Value.absent(),
     required int stockQuantity,
     this.minStockLimit = const Value.absent(),
     this.isActive = const Value.absent(),
@@ -1396,6 +1446,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     Expression<double>? price,
     Expression<double>? cartonPrice,
     Expression<int>? unitsPerCarton,
+    Expression<double>? cartonQuantity,
     Expression<int>? stockQuantity,
     Expression<int>? minStockLimit,
     Expression<bool>? isActive,
@@ -1413,6 +1464,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
       if (price != null) 'price': price,
       if (cartonPrice != null) 'carton_price': cartonPrice,
       if (unitsPerCarton != null) 'units_per_carton': unitsPerCarton,
+      if (cartonQuantity != null) 'carton_quantity': cartonQuantity,
       if (stockQuantity != null) 'stock_quantity': stockQuantity,
       if (minStockLimit != null) 'min_stock_limit': minStockLimit,
       if (isActive != null) 'is_active': isActive,
@@ -1432,6 +1484,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     Value<double>? price,
     Value<double>? cartonPrice,
     Value<int>? unitsPerCarton,
+    Value<double>? cartonQuantity,
     Value<int>? stockQuantity,
     Value<int>? minStockLimit,
     Value<bool>? isActive,
@@ -1449,6 +1502,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
       price: price ?? this.price,
       cartonPrice: cartonPrice ?? this.cartonPrice,
       unitsPerCarton: unitsPerCarton ?? this.unitsPerCarton,
+      cartonQuantity: cartonQuantity ?? this.cartonQuantity,
       stockQuantity: stockQuantity ?? this.stockQuantity,
       minStockLimit: minStockLimit ?? this.minStockLimit,
       isActive: isActive ?? this.isActive,
@@ -1488,6 +1542,9 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     if (unitsPerCarton.present) {
       map['units_per_carton'] = Variable<int>(unitsPerCarton.value);
     }
+    if (cartonQuantity.present) {
+      map['carton_quantity'] = Variable<double>(cartonQuantity.value);
+    }
     if (stockQuantity.present) {
       map['stock_quantity'] = Variable<int>(stockQuantity.value);
     }
@@ -1521,6 +1578,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
           ..write('price: $price, ')
           ..write('cartonPrice: $cartonPrice, ')
           ..write('unitsPerCarton: $unitsPerCarton, ')
+          ..write('cartonQuantity: $cartonQuantity, ')
           ..write('stockQuantity: $stockQuantity, ')
           ..write('minStockLimit: $minStockLimit, ')
           ..write('isActive: $isActive, ')
@@ -7252,6 +7310,7 @@ typedef $$ProductsTableCreateCompanionBuilder =
       required double price,
       Value<double> cartonPrice,
       Value<int> unitsPerCarton,
+      Value<double> cartonQuantity,
       required int stockQuantity,
       Value<int> minStockLimit,
       Value<bool> isActive,
@@ -7270,6 +7329,7 @@ typedef $$ProductsTableUpdateCompanionBuilder =
       Value<double> price,
       Value<double> cartonPrice,
       Value<int> unitsPerCarton,
+      Value<double> cartonQuantity,
       Value<int> stockQuantity,
       Value<int> minStockLimit,
       Value<bool> isActive,
@@ -7391,6 +7451,11 @@ class $$ProductsTableFilterComposer
 
   ColumnFilters<int> get unitsPerCarton => $composableBuilder(
     column: $table.unitsPerCarton,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get cartonQuantity => $composableBuilder(
+    column: $table.cartonQuantity,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7554,6 +7619,11 @@ class $$ProductsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get cartonQuantity => $composableBuilder(
+    column: $table.cartonQuantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get stockQuantity => $composableBuilder(
     column: $table.stockQuantity,
     builder: (column) => ColumnOrderings(column),
@@ -7624,6 +7694,11 @@ class $$ProductsTableAnnotationComposer
 
   GeneratedColumn<int> get unitsPerCarton => $composableBuilder(
     column: $table.unitsPerCarton,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get cartonQuantity => $composableBuilder(
+    column: $table.cartonQuantity,
     builder: (column) => column,
   );
 
@@ -7766,6 +7841,7 @@ class $$ProductsTableTableManager
                 Value<double> price = const Value.absent(),
                 Value<double> cartonPrice = const Value.absent(),
                 Value<int> unitsPerCarton = const Value.absent(),
+                Value<double> cartonQuantity = const Value.absent(),
                 Value<int> stockQuantity = const Value.absent(),
                 Value<int> minStockLimit = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
@@ -7782,6 +7858,7 @@ class $$ProductsTableTableManager
                 price: price,
                 cartonPrice: cartonPrice,
                 unitsPerCarton: unitsPerCarton,
+                cartonQuantity: cartonQuantity,
                 stockQuantity: stockQuantity,
                 minStockLimit: minStockLimit,
                 isActive: isActive,
@@ -7800,6 +7877,7 @@ class $$ProductsTableTableManager
                 required double price,
                 Value<double> cartonPrice = const Value.absent(),
                 Value<int> unitsPerCarton = const Value.absent(),
+                Value<double> cartonQuantity = const Value.absent(),
                 required int stockQuantity,
                 Value<int> minStockLimit = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
@@ -7816,6 +7894,7 @@ class $$ProductsTableTableManager
                 price: price,
                 cartonPrice: cartonPrice,
                 unitsPerCarton: unitsPerCarton,
+                cartonQuantity: cartonQuantity,
                 stockQuantity: stockQuantity,
                 minStockLimit: minStockLimit,
                 isActive: isActive,

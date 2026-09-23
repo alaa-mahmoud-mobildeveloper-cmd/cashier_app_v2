@@ -1,61 +1,70 @@
 import 'package:cashier_app_v2/features/inventory/domain/entities/product_items_entit.dart';
+import 'package:cashier_app_v2/features/inventory/presentation/widgets/product_table_row.dart';
 import 'package:flutter/material.dart';
 
 import 'package:cashier_app_v2/core/constants/app_colors.dart';
 
-import 'product_table_row.dart';
-import 'products_table_header.dart';
-
-class ProductsTable extends StatelessWidget {
+class ProductsGrid extends StatelessWidget {
   final List<ProductItem> items;
   final ValueChanged<ProductItem>? onEdit;
 
-  const ProductsTable({super.key, required this.items, this.onEdit});
+  const ProductsGrid({
+    super.key,
+    required this.items,
+    this.onEdit,
+  });
 
-  // أقل عرض مسموح للجدول قبل ظهور شريط التمرير الأفقي على الشاشات الصغيرة.
-  static const double _tableMinWidth = 1120.0;
+  static const double _cardMinWidth = 260.0;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final actualWidth = constraints.maxWidth > _tableMinWidth
-              ? constraints.maxWidth
-              : _tableMinWidth;
-
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: actualWidth,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const ProductsTableHeader(),
-                  if (items.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 48),
-                      child: Center(
-                        child: Text(
-                          'لا توجد أصناف مطابقة',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
-                      ),
-                    )
-                  else
-                    ...items.map(
-                          (item) => ProductTableRow(
-                        item: item,
-                        onEdit: () => onEdit?.call(item),
-                      ),
-                    ),
-                ],
-              ),
+    if (items.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 48),
+        child: Center(
+          child: Text(
+            'لا توجد أصناف مطابقة',
+            style: TextStyle(
+              color: AppColors.textSecondary,
             ),
-          );
-        },
-      ),
+          ),
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = (constraints.maxWidth / _cardMinWidth)
+            .floor()
+            .clamp(1, 6);
+
+        final cardHeight = constraints.maxWidth < 700
+            ? 560.0
+            : constraints.maxWidth < 1100
+            ? 550.0
+            : 520.0;
+
+        return GridView.builder(
+          padding: EdgeInsets.zero,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisExtent: cardHeight,
+            mainAxisSpacing: 14,
+            crossAxisSpacing: 14,
+          ),
+          itemCount: items.length,
+          itemBuilder: (context, index) {
+            final item = items[index];
+
+            return ProductCard(
+              item: item,
+              onEdit: () => onEdit?.call(item),
+            );
+          },
+        );
+      },
     );
   }
 }

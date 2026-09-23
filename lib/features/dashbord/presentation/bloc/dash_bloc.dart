@@ -7,24 +7,47 @@ import 'package:injectable/injectable.dart';
 @injectable
 class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   final GetDashboard _getDashboard;
-  DashboardBloc(this._getDashboard) : super(const DashboardInitial()) {
+
+  DashboardBloc(this._getDashboard)
+      : super(const DashboardInitial()) {
     on<LoadDashboard>(_onLoadDashboard);
     on<RefreshDashboard>(_onRefreshDashboard);
   }
-  Future<void> _onLoadDashboard( LoadDashboard event, Emitter<DashboardState> emit, ) async {
-    await _loadDashboard(emit);
-  }
-  Future<void> _onRefreshDashboard( RefreshDashboard event, Emitter<DashboardState> emit, ) async {
-    await _loadDashboard(emit);
-  }
-  Future<void> _loadDashboard( Emitter<DashboardState> emit, ) async {
+
+  Future<void> _onLoadDashboard(
+      LoadDashboard event,
+      Emitter<DashboardState> emit,
+      ) async {
     emit(const DashboardLoading());
+
+    await emit.forEach(
+      _getDashboard.watch(),
+      onData: (dashboard) {
+        return DashboardLoaded(dashboard);
+      },
+      onError: (error, stackTrace) {
+        return DashboardError(
+          error.toString(),
+        );
+      },
+    );
+  }
+
+  Future<void> _onRefreshDashboard(
+      RefreshDashboard event,
+      Emitter<DashboardState> emit,
+      ) async {
     try {
       final dashboard = await _getDashboard();
-      emit(DashboardLoaded(dashboard));
+
+      emit(
+        DashboardLoaded(dashboard),
+      );
     } catch (e) {
-      emit( DashboardError( e.toString(), )
-        ,
+      emit(
+        DashboardError(
+          e.toString(),
+        ),
       );
     }
   }

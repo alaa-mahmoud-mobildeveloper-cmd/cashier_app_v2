@@ -6,6 +6,7 @@ import 'package:cashier_app_v2/features/dashbord/data/models/sales_category.dart
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:injectable/injectable.dart';
+import 'package:rxdart/rxdart.dart';
 
 @LazySingleton(as: DashboardLocalDataSource)
 class DashboardLocalDataSourceImpl implements DashboardLocalDataSource {
@@ -15,6 +16,19 @@ class DashboardLocalDataSourceImpl implements DashboardLocalDataSource {
 
   @override
   Future<DashboardModel> getDashboard() async {
+    return _buildDashboard();
+  }
+
+  @override
+  Stream<DashboardModel> watchDashboardData() {
+    return Rx.combineLatest2(
+      _db.select(_db.invoices).watch(),
+      _db.select(_db.products).watch(),
+          (_, __) async* {},
+    ).asyncMap((_) => _buildDashboard());
+  }
+
+  Future<DashboardModel> _buildDashboard() async {
     final now = DateTime.now();
 
     final todayStart = DateTime(
@@ -189,9 +203,7 @@ class DashboardLocalDataSourceImpl implements DashboardLocalDataSource {
         invoice.createdAt.day,
       );
 
-      final difference = invoiceDate
-          .difference(start)
-          .inDays;
+      final difference = invoiceDate.difference(start).inDays;
 
       if (difference >= 0 && difference < 7) {
         values[difference] += invoice.netAmount;
@@ -233,8 +245,7 @@ class DashboardLocalDataSourceImpl implements DashboardLocalDataSource {
           : item.category.trim();
 
       totals[category] =
-          (totals[category] ?? 0.0) +
-              item.totalPrice;
+          (totals[category] ?? 0.0) + item.totalPrice;
     }
 
     final entries = totals.entries.toList()

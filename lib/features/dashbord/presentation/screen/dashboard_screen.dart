@@ -147,7 +147,7 @@ class _DashboardContent extends StatelessWidget {
     final cards = [
        StatCard(
         title: 'عملاء اليوم',
-        value: '${dashboard.todayCustomers}',
+        value: '${dashboard.todayInvoices}',
         icon: Icons.people_alt_outlined,
       ),
       StatCard(

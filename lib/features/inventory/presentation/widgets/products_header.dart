@@ -41,6 +41,12 @@ class ProductsHeader extends StatelessWidget {
           icon: const Icon(Icons.add, size: 20),
           label: const Text('إضافة صنف'),
         ),
+        const SizedBox(width: 12),
+        ElevatedButton.icon(
+          onPressed: onAddPressed,
+          icon: const Icon(Icons.add, size: 20),
+          label: const Text('إضافة فاتوره توريد'),
+        ),
       ],
     );
   }

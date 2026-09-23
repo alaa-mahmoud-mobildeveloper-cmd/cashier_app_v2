@@ -1,5 +1,6 @@
+import 'package:cashier_app_v2/core/database/app_database.dart';
 import 'package:cashier_app_v2/di.dart';
-import 'package:cashier_app_v2/features/pos/domain/entities/product.dart';
+import 'package:cashier_app_v2/features/pos/domain/entities/product.dart' hide Product;
 import 'package:cashier_app_v2/features/pos/domain/repositories/sales_repository.dart';
 import 'package:cashier_app_v2/features/pos/presentation/bloc/pos_bloc.dart';
 import 'package:cashier_app_v2/features/pos/presentation/bloc/pos_event.dart';
@@ -14,7 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/database/app_database.dart';
+import '../../../../core/database/app_database.dart' hide Product;
 import '../widgets/category_tabs.dart';
 import '../widgets/pos_header.dart';
 import '../widgets/products_grid.dart';
@@ -40,6 +41,7 @@ class _PosView extends StatefulWidget {
 
 class _PosViewState extends State<_PosView> {
   final searchController = TextEditingController();
+  final searchFocusNode = FocusNode();
   final discountController = TextEditingController(text: '0');
   final receivedController = TextEditingController(text: '0');
 
@@ -57,13 +59,82 @@ class _PosViewState extends State<_PosView> {
     'ألبان',
     'مخبوزات',
   ];
+  late final FocusNode _barcodeFocusNode;
+  void _handleBarcodeFocus() {
+    if (!mounted) return;
+
+    if (!_barcodeFocusNode.hasFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+
+        _barcodeFocusNode.requestFocus();
+      });
+    }
+  }
+  @override
+  void initState() {
+    super.initState();
+
+    _barcodeFocusNode = FocusNode();
+
+    _barcodeFocusNode.addListener(_handleBarcodeFocus);
+
+    _requestBarcodeFocus();
+  }
+
+  void _requestBarcodeFocus() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      _barcodeFocusNode.requestFocus();
+    });
+  }
+
+
 
   @override
   void dispose() {
     searchController.dispose();
+    _barcodeFocusNode.removeListener(_handleBarcodeFocus);
+    _barcodeFocusNode.dispose();
+
     discountController.dispose();
     receivedController.dispose();
     super.dispose();
+  }
+
+  /// يدور على منتج بالباركود جوه القائمة الحالية.
+  Product? _findProductByBarcode(List<Product> products, String barcode) {
+    final code = barcode.trim();
+    if (code.isEmpty) return null;
+
+    for (final product in products) {
+      if (product.barcode == code) {
+        return product;
+      }
+    }
+    return null;
+  }
+
+  /// بينفّذ لما السكانر يبعت Enter: يدور على المنتج ويضيفه للسلة مباشرة.
+  void _handleBarcodeScanned(
+      BuildContext context,
+      List<Product> products,
+      String barcode,
+      ) {
+    final product = _findProductByBarcode(products, barcode);
+
+    if (product == null) {
+      _showMessage('لا يوجد منتج بهذا الباركود', isError: true);
+    } else {
+      context.read<CartBloc>().add(AddProductToCart(product ));
+      _showMessage('تمت إضافة ${product.name} إلى السلة');
+    }
+
+    // نجهّز الحقل للسكان اللي بعده في الحالتين
+    searchController.clear();
+    setState(() {});
+    searchFocusNode.requestFocus();
   }
 
   Future<void> _saveCreditOrder({
@@ -131,23 +202,17 @@ class _PosViewState extends State<_PosView> {
         int customerId;
         double oldCustomerDebt = 0;
 
-        final existingCustomer = await (
-            database.select(database.customers)
-              ..where(
-                    (tbl) => tbl.phone.equals(phone),
-              )
-        ).getSingleOrNull();
+        final existingCustomer = await (database.select(database.customers)
+          ..where((tbl) => tbl.phone.equals(phone)))
+            .getSingleOrNull();
 
         if (existingCustomer != null) {
           customerId = existingCustomer.id;
           oldCustomerDebt = existingCustomer.totalDebt;
 
-          await (
-              database.update(database.customers)
-                ..where(
-                      (tbl) => tbl.id.equals(customerId),
-                )
-          ).write(
+          await (database.update(database.customers)
+            ..where((tbl) => tbl.id.equals(customerId)))
+              .write(
             CustomersCompanion(
               name: drift.Value(name),
             ),
@@ -162,35 +227,24 @@ class _PosViewState extends State<_PosView> {
           );
         }
 
-        final remaining = (totalAmount - paidAmount)
-            .clamp(0.0, double.infinity)
-            .toDouble();
+        final remaining =
+        (totalAmount - paidAmount).clamp(0.0, double.infinity).toDouble();
 
         final status = _resolveInvoiceStatus(
           paidAmount: paidAmount,
           remainingAmount: remaining,
         );
 
-        final invoiceNumber =
-            'INV-${DateTime.now().millisecondsSinceEpoch}';
+        final invoiceNumber = 'INV-${DateTime.now().millisecondsSinceEpoch}';
 
         double totalProfit = 0;
 
         for (final item in cartItems) {
           final product = item.product;
-
           final quantity = item.quantity as int;
-
-          final purchasePrice =
-          (product.purchasePrice as num).toDouble();
-
-          final unitPrice =
-          (product.price as num).toDouble();
-
-          final itemTotal = unitPrice * quantity;
-
-          final itemProfit =
-              (unitPrice - purchasePrice) * quantity;
+          final purchasePrice = (product.purchasePrice as num).toDouble();
+          final unitPrice = (product.price as num).toDouble();
+          final itemProfit = (unitPrice - purchasePrice) * quantity;
 
           totalProfit += itemProfit;
         }
@@ -198,85 +252,52 @@ class _PosViewState extends State<_PosView> {
         final invoiceId = await database.into(database.invoices).insert(
           InvoicesCompanion(
             invoiceNumber: drift.Value(invoiceNumber),
-
             userId: const drift.Value(1),
-
             customerId: drift.Value(customerId),
-
             totalAmount: drift.Value(totalAmount),
-
             discount: const drift.Value(0),
-
             tax: const drift.Value(0),
-
             netAmount: drift.Value(totalAmount),
-
             profit: drift.Value(totalProfit),
-
             paidAmount: drift.Value(paidAmount),
-
             remainingAmount: drift.Value(remaining),
-
             paymentMethod: const drift.Value('credit'),
-
             status: drift.Value(status),
-
             createdAt: drift.Value(DateTime.now()),
           ),
         );
 
         for (final item in cartItems) {
           final product = item.product;
-
           final quantity = item.quantity as int;
-
-          final purchasePrice =
-          (product.purchasePrice as num).toDouble();
-
-          final unitPrice =
-          (product.price as num).toDouble();
-
+          final purchasePrice = (product.purchasePrice as num).toDouble();
+          final unitPrice = (product.price as num).toDouble();
           final totalPrice = unitPrice * quantity;
-
-          final profit =
-              (unitPrice - purchasePrice) * quantity;
+          final profit = (unitPrice - purchasePrice) * quantity;
 
           await database.into(database.invoiceItems).insert(
             InvoiceItemsCompanion(
               invoiceId: drift.Value(invoiceId),
-
               productId: drift.Value(product.id),
-
               productName: drift.Value(product.name),
-
               barcode: drift.Value(product.barcode),
-
               category: drift.Value(product.category),
-
               unit: drift.Value(product.unit),
-
               purchasePrice: drift.Value(purchasePrice),
-
               unitPrice: drift.Value(unitPrice),
-
               quantity: drift.Value(quantity),
-
               totalPrice: drift.Value(totalPrice),
-
               profit: drift.Value(profit),
             ),
           );
         }
 
-        final newCustomerDebt =
-            oldCustomerDebt + remaining;
 
-        await (
-            database.update(database.customers)
-              ..where(
-                    (tbl) => tbl.id.equals(customerId),
-              )
-        ).write(
+        final newCustomerDebt = oldCustomerDebt + remaining;
+
+        await (database.update(database.customers)
+          ..where((tbl) => tbl.id.equals(customerId)))
+            .write(
           CustomersCompanion(
             totalDebt: drift.Value(newCustomerDebt),
           ),
@@ -294,9 +315,7 @@ class _PosViewState extends State<_PosView> {
       setState(() {
         discountController.text = '0';
         receivedController.text = '0';
-
         paymentMethod = PaymentMethod.cash;
-
         deferredPaidAmount = null;
       });
 
@@ -331,12 +350,9 @@ class _PosViewState extends State<_PosView> {
   }
 
   double _change(double total) {
-    final received =
-        double.tryParse(receivedController.text) ?? 0;
+    final received = double.tryParse(receivedController.text) ?? 0;
 
-    return (received - total)
-        .clamp(0, double.infinity)
-        .toDouble();
+    return (received - total).clamp(0, double.infinity).toDouble();
   }
 
   void _checkout(
@@ -369,8 +385,7 @@ class _PosViewState extends State<_PosView> {
     try {
       final salesRepo = getIt<SalesRepository>();
 
-      final recentInvoices =
-      await salesRepo.getRecentInvoices();
+      final recentInvoices = await salesRepo.getRecentInvoices();
 
       if (!context.mounted) {
         return;
@@ -415,8 +430,7 @@ class _PosViewState extends State<_PosView> {
             message,
             textDirection: TextDirection.rtl,
           ),
-          backgroundColor:
-          isError ? AppColors.danger : AppColors.success,
+          backgroundColor: isError ? AppColors.danger : AppColors.success,
         ),
       );
   }
@@ -432,8 +446,7 @@ class _PosViewState extends State<_PosView> {
             listenWhen: (previous, current) =>
             previous.status != current.status,
             listener: (context, state) {
-              if (state.status ==
-                  CartStatus.checkoutSuccess) {
+              if (state.status == CartStatus.checkoutSuccess) {
                 discountController.text = '0';
                 receivedController.text = '0';
 
@@ -457,14 +470,12 @@ class _PosViewState extends State<_PosView> {
               }
             },
             builder: (context, state) {
-              final searchQuery =
-              searchController.text.trim();
+              final searchQuery = searchController.text.trim();
 
               final filteredProducts = state.products
                   .where(
                     (product) =>
-                category == 'الكل' ||
-                    product.category == category,
+                category == 'الكل' || product.category == category,
               )
                   .where(
                     (product) =>
@@ -477,11 +488,13 @@ class _PosViewState extends State<_PosView> {
                 children: [
                   PosHeader(
                     controller: searchController,
+                    focusNode: _barcodeFocusNode,
                     onSearch: (_) {
+                      // مجرد إعادة بناء عشان يتفلتر state.products بالنص الحالي
                       setState(() {});
                     },
-                    onSubmitted: (_) {
-                      setState(() {});
+                    onBarcodeScanned: (barcode) {
+                      _handleBarcodeScanned(context, state.products, barcode);
                     },
                     onReturn: () {
                       _returnInvoice(context);
@@ -498,8 +511,7 @@ class _PosViewState extends State<_PosView> {
                   ),
                   const SizedBox(height: 8),
                   Expanded(
-                    child: state.status ==
-                        CartStatus.loading &&
+                    child: state.status == CartStatus.loading &&
                         state.products.isEmpty
                         ? const Center(
                       child: CircularProgressIndicator(
@@ -576,22 +588,18 @@ class _PosViewState extends State<_PosView> {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final isDesktop =
-              constraints.maxWidth > 850;
+          final isDesktop = constraints.maxWidth > 850;
 
           return Center(
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                maxWidth:
-                isDesktop ? 450 : double.infinity,
+                maxWidth: isDesktop ? 450 : double.infinity,
               ),
               child: Column(
-                crossAxisAlignment:
-                CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
-                    mainAxisAlignment:
-                    MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Row(
                         children: [
@@ -630,25 +638,19 @@ class _PosViewState extends State<_PosView> {
                     child: state.cartItems.isEmpty
                         ? const EmptyCartState()
                         : ListView.separated(
-                      itemCount:
-                      state.cartItems.length,
+                      itemCount: state.cartItems.length,
                       separatorBuilder: (_, __) =>
                       const SizedBox(height: 8),
                       itemBuilder: (_, index) {
-                        final item =
-                        state.cartItems[index];
+                        final item = state.cartItems[index];
 
                         return CartItemTile(
                           item: item,
-                          onQuantityChanged:
-                              (delta) {
-                            context
-                                .read<CartBloc>()
-                                .add(
+                          onQuantityChanged: (delta) {
+                            context.read<CartBloc>().add(
                               UpdateQuantity(
                                 item.product.id,
-                                item.quantity +
-                                    delta,
+                                item.quantity + delta,
                               ),
                             );
                           },
@@ -658,14 +660,12 @@ class _PosViewState extends State<_PosView> {
                   ),
                   const SizedBox(height: 12),
                   Row(
-                    mainAxisAlignment:
-                    MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
                         'الإجمالي قبل الخصم',
                         style: TextStyle(
-                          color:
-                          AppColors.textSecondary,
+                          color: AppColors.textSecondary,
                         ),
                       ),
                       Text(
@@ -683,50 +683,40 @@ class _PosViewState extends State<_PosView> {
                         ),
                       );
                     },
-                    keyboardType:
-                    const TextInputType.numberWithOptions(
+                    keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    decoration:
-                    const InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: 'خصم (ج)',
                       isDense: true,
                     ),
                   ),
                   const SizedBox(height: 10),
                   Container(
-                    padding:
-                    const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: AppColors.goldSurface,
-                      borderRadius:
-                      BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: AppColors.goldDark,
                       ),
                     ),
                     child: Row(
-                      mainAxisAlignment:
-                      MainAxisAlignment
-                          .spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
                           'الإجمالي',
                           style: TextStyle(
-                            color:
-                            AppColors.goldLight,
-                            fontWeight:
-                            FontWeight.bold,
+                            color: AppColors.goldLight,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                         Text(
                           '${total.toStringAsFixed(2)} ج',
                           style: const TextStyle(
-                            color:
-                            AppColors.goldLight,
+                            color: AppColors.goldLight,
                             fontSize: 20,
-                            fontWeight:
-                            FontWeight.bold,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
@@ -740,13 +730,10 @@ class _PosViewState extends State<_PosView> {
                         paymentMethod = value;
                       });
                     },
-                    onDeferredConfirm:
-                        (name, phone, amount) {
+                    onDeferredConfirm: (name, phone, amount) {
                       setState(() {
-                        paymentMethod =
-                            PaymentMethod.credit;
-                        deferredPaidAmount =
-                            amount;
+                        paymentMethod = PaymentMethod.credit;
+                        deferredPaidAmount = amount;
                       });
 
                       _saveCreditOrder(
@@ -758,17 +745,14 @@ class _PosViewState extends State<_PosView> {
                       );
                     },
                   ),
-                  if (paymentMethod ==
-                      PaymentMethod.cash) ...[
+                  if (paymentMethod == PaymentMethod.cash) ...[
                     const SizedBox(height: 10),
                     TextField(
-                      controller:
-                      receivedController,
+                      controller: receivedController,
                       onChanged: (_) {
                         setState(() {});
                       },
-                      keyboardType:
-                      const TextInputType.numberWithOptions(
+                      keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
                       decoration: InputDecoration(
@@ -783,8 +767,7 @@ class _PosViewState extends State<_PosView> {
                   const TextField(
                     maxLines: 1,
                     decoration: InputDecoration(
-                      hintText:
-                      'ملاحظة (اختياري)',
+                      hintText: 'ملاحظة (اختياري)',
                       isDense: true,
                     ),
                   ),
@@ -793,12 +776,9 @@ class _PosViewState extends State<_PosView> {
                     children: [
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed:
-                          state.cartItems.isEmpty ||
-                              state.status ==
-                                  CartStatus.loading ||
-                              paymentMethod ==
-                                  PaymentMethod.credit
+                          onPressed: state.cartItems.isEmpty ||
+                              state.status == CartStatus.loading ||
+                              paymentMethod == PaymentMethod.credit
                               ? null
                               : () {
                             _checkout(
@@ -806,27 +786,22 @@ class _PosViewState extends State<_PosView> {
                               total,
                             );
                           },
-                          icon: state.status ==
-                              CartStatus.loading
+                          icon: state.status == CartStatus.loading
                               ? const SizedBox(
                             width: 18,
                             height: 18,
-                            child:
-                            CircularProgressIndicator(
+                            child: CircularProgressIndicator(
                               strokeWidth: 2,
                               color: Colors.black,
                             ),
                           )
                               : const Icon(
-                            Icons
-                                .check_circle_outline,
+                            Icons.check_circle_outline,
                           ),
                           label: Text(
-                            state.status ==
-                                CartStatus.loading
+                            state.status == CartStatus.loading
                                 ? 'جاري الحفظ...'
-                                : paymentMethod ==
-                                PaymentMethod.credit
+                                : paymentMethod == PaymentMethod.credit
                                 ? 'تم تسجيل الآجل'
                                 : 'إتمام البيع',
                           ),
@@ -837,8 +812,7 @@ class _PosViewState extends State<_PosView> {
                         onPressed: () {
                           showDialog(
                             context: context,
-                            builder: (_) =>
-                            const SimpleCalculatorDialog(),
+                            builder: (_) => const SimpleCalculatorDialog(),
                           );
                         },
                         icon: const Icon(
@@ -848,11 +822,7 @@ class _PosViewState extends State<_PosView> {
                     ],
                   ),
                   SizedBox(
-                    height:
-                    MediaQuery.of(context)
-                        .viewInsets
-                        .bottom +
-                        8,
+                    height: MediaQuery.of(context).viewInsets.bottom + 8,
                   ),
                 ],
               ),

@@ -14,6 +14,14 @@ import 'package:drift/drift.dart';
 /// الوحدة من الكرتونة زي ما اتطلب، بس بنخزن الناتج في العمود اللي
 /// باقي المشروع (المبيعات) شايفه أصلًا، بدل ما نستحدث عمود جديد
 /// ونكسر حاجة تانية.
+///
+/// ملحوظة عن الكمية: stockQuantity هو الكمية الفعلية بالوحدة المتاحة
+/// للبيع، وهو اللي بينقص مع كل عملية بيع (نفس quantity في
+/// ProductItem). cartonQuantity عمود منفصل بيسجل عدد الكراتين اللي
+/// اتوردت، وبيتستخدم بس وقت الإضافة/التوريد لحساب stockQuantity
+/// تلقائيًا (= cartonQuantity × unitsPerCarton) فى
+/// DriftProductRepository، وبعد كده stockQuantity بيتغير لوحده مع
+/// المبيعات من غير ما يرجع يتحسب من cartonQuantity تاني.
 class Products extends Table {
   IntColumn get id => integer().autoIncrement()();
 
@@ -39,6 +47,13 @@ class Products extends Table {
   /// عدد الوحدات في الكرتونة الواحدة.
   IntColumn get unitsPerCarton => integer().withDefault(const Constant(1))();
 
+  /// عدد الكراتين اللي اتوردت (بيانة توريد، مش بتنقص مع البيع).
+  /// بيتستخدم لحساب stockQuantity تلقائيًا وقت الإضافة/التوريد:
+  /// stockQuantity = cartonQuantity × unitsPerCarton.
+  RealColumn get cartonQuantity =>
+      real().withDefault(const Constant(0))();
+  /// الكمية الفعلية بالوحدة المتاحة للبيع. دي اللي بتنقص مع كل عملية
+  /// بيع، ومستقلة عن cartonQuantity بعد أول حساب.
   IntColumn get stockQuantity => integer()();
 
   IntColumn get minStockLimit => integer().withDefault(const Constant(5))();

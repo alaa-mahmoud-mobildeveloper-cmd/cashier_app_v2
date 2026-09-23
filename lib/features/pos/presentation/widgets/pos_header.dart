@@ -3,19 +3,19 @@ import '../../../../core/constants/app_colors.dart';
 
 class PosHeader extends StatelessWidget {
   final TextEditingController controller;
+  final FocusNode? focusNode;
   final ValueChanged<String> onSearch;
+  final ValueChanged<String>? onBarcodeScanned; // بيتنفذ لما السكانر يبعت Enter
   final VoidCallback? onReturn;
-  final ValueChanged<String>? onSubmitted;
 
   const PosHeader({
     super.key,
     required this.controller,
     required this.onSearch,
-    required this.onSubmitted,
+    this.focusNode,
+    this.onBarcodeScanned,
     this.onReturn,
   });
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -26,8 +26,28 @@ class PosHeader extends StatelessWidget {
           Expanded(
             child: TextField(
               controller: controller,
+              focusNode: focusNode,
+              autofocus: true,
               onChanged: onSearch,
-              onSubmitted: onSubmitted, // تأكد من استقبالها لو حابب تفصلها، أو خليه يستدعي onSearch
+              onSubmitted: (value) {
+                final code = value.trim();
+
+                if (code.isEmpty) {
+                  focusNode?.requestFocus();
+                  return;
+                }
+
+                onBarcodeScanned?.call(code);
+
+                controller.clear();
+                onSearch('');
+
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (focusNode != null && !focusNode!.hasFocus) {
+                    focusNode!.requestFocus();
+                  }
+                });
+              },
               textInputAction: TextInputAction.search,
               decoration: const InputDecoration(
                 hintText: 'ابحث بالاسم أو امسح الباركود',

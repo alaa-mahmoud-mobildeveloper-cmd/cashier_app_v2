@@ -5,6 +5,7 @@ class Product {
   final String category;
   final double price;
   final int stock;
+  final String barcode;
   final IconData icon;
 
   const Product({
@@ -12,6 +13,7 @@ class Product {
     required this.category,
     required this.price,
     required this.stock,
+    required this.barcode,
     required this.icon,
   });
 }
@@ -27,6 +29,8 @@ class CartItem {
 
 enum PaymentMethod {
   cash('كاش', Icons.payments_outlined),
+  wallet('محفظه ', Icons.wallet_outlined),
+
   visa('فيزا', Icons.credit_card_outlined),
   fawry('فوري', Icons.wifi_outlined),
   credit('آجل', Icons.access_time_outlined);

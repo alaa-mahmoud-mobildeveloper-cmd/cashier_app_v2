@@ -25,7 +25,7 @@ import '../widgets/products_table.dart';
 class ProductsScreen extends StatelessWidget {
   const ProductsScreen({super.key});
 
-  static const _categories = ['مواد غذائية', 'مشروبات', 'منظفات', 'ألبان'];
+  static const _categories = ['مواد غذائية', 'مشروبات', 'سجائر','منظفات', 'ألبان','اخرى'];
 
   @override
   Widget build(BuildContext context) {
@@ -106,7 +106,7 @@ class _ProductsView extends StatelessWidget {
                         ),
                       )
                     else
-                      ProductsTable(
+                      ProductsGrid(
                         items: state.filteredProducts,
                         onEdit: (item) => _openAddDialog(context, editing: item),
                       ),

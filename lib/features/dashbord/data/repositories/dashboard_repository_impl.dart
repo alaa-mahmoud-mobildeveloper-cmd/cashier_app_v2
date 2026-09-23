@@ -11,4 +11,10 @@ class DashboardRepositoryImpl implements DashboardRepository {
   Future<DashboardModel> getDashboard() {
     return _localDataSource.getDashboard();
   }
+
+  @override
+  Stream<DashboardModel> watchDashboardData() {
+    return _localDataSource.watchDashboardData();
+  }
+
 }

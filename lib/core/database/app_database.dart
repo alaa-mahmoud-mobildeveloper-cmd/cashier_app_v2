@@ -41,7 +41,7 @@ part 'app_database.g.dart';
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   @override
-  int get schemaVersion => 13;   // كانت 12
+  int get schemaVersion => 14;   // كانت 13
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -95,6 +95,17 @@ class AppDatabase extends _$AppDatabase {
       // ربط الفاتورة بعميل مسجَّل (اختياري) عشان شاشة الآجل والمديونيات
       if (from < 13) {
         await m.addColumn(invoices, invoices.customerId);
+      }
+
+      // Version 14
+      // إضافة عدد الكراتين (cartonQuantity) كبيانة توريد منفصلة عن
+      // stockQuantity (الكمية الفعلية بالوحدة اللي بتنقص مع البيع).
+      // من غير الميجريشن دي، أي قاعدة بيانات موجودة فعليًا على جهاز
+      // المستخدم مش هتعرف العمود الجديد، والقراءة منها هتضرب null
+      // check exception لأن العمود non-nullable وله قيمة افتراضية
+      // بس على الـ insert مش على الصفوف القديمة.
+      if (from < 14) {
+        await m.addColumn(products, products.cartonQuantity);
       }
     },
   );

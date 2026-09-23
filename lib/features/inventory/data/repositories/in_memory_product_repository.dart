@@ -10,9 +10,14 @@ import '../../domain/repositories/product_repository.dart';
 /// لما جدول Drift يكون جاهز، تقدر تستبدلها بـ DriftProductRepository
 /// (شوف drift_product_repository.dart) من غير ما تغيّر حرف واحد في
 /// الـ BLoC أو الشاشة، لأن الاتنين بيطبقوا نفس الـ interface.
+///
+/// كل الأصناف هنا بتتبنى بـ [ProductItem.fromCartonQuantity] عشان
+/// الكمية بالوحدة تتحسب تلقائيًا من الكمية بالكرتونة أول مرة
+/// (quantity = cartonQuantity × unitsPerCarton)، بالظبط زي ما هيحصل
+/// وقت إضافة صنف حقيقي من الشاشة.
 class InMemoryProductRepository implements ProductRepository {
   final List<ProductItem> _items = [
-    const ProductItem(
+    ProductItem.fromCartonQuantity(
       id: '1',
       name: 'زيت عباد الشمس 1.5 لتر',
       barcode: '6001',
@@ -20,9 +25,9 @@ class InMemoryProductRepository implements ProductRepository {
       sellPrice: 28,
       cartonPrice: 230,
       unitsPerCarton: 12,
-      quantity: 45,
-    ),
-    const ProductItem(
+      cartonQuantity: 4, // 4 × 12 = 48 وحدة (اتباع منها 3 وحدات لحد دلوقتي)
+    ).sellUnits(3),
+    ProductItem.fromCartonQuantity(
       id: '2',
       name: 'سكر أبيض 1 كجم',
       barcode: '6002',
@@ -30,9 +35,9 @@ class InMemoryProductRepository implements ProductRepository {
       sellPrice: 12,
       cartonPrice: 155,
       unitsPerCarton: 20,
-      quantity: 3,
-    ),
-    const ProductItem(
+      cartonQuantity: 1, // 1 × 20 = 20 وحدة (اتباع منها 17 وحدة)
+    ).sellUnits(17),
+    ProductItem.fromCartonQuantity(
       id: '3',
       name: 'شاي ليبتون 100 كيس',
       barcode: '6003',
@@ -40,9 +45,9 @@ class InMemoryProductRepository implements ProductRepository {
       sellPrice: 45,
       cartonPrice: 188,
       unitsPerCarton: 6,
-      quantity: 0,
-    ),
-    const ProductItem(
+      cartonQuantity: 1, // اتباعت كل الكرتونة، الصنف نفذ
+    ).sellUnits(6),
+    ProductItem.fromCartonQuantity(
       id: '4',
       name: 'أرز بسمتي 5 كجم',
       barcode: '6004',
@@ -50,9 +55,9 @@ class InMemoryProductRepository implements ProductRepository {
       sellPrice: 85,
       cartonPrice: 235,
       unitsPerCarton: 4,
-      quantity: 22,
-    ),
-    const ProductItem(
+      cartonQuantity: 6, // 6 × 4 = 24 وحدة (اتباع منها وحدتين)
+    ).sellUnits(2),
+    ProductItem.fromCartonQuantity(
       id: '5',
       name: 'صابون اريل 3 كجم',
       barcode: '6005',
@@ -60,9 +65,9 @@ class InMemoryProductRepository implements ProductRepository {
       sellPrice: 55,
       cartonPrice: 224,
       unitsPerCarton: 6,
-      quantity: 5,
-    ),
-    const ProductItem(
+      cartonQuantity: 1, // 1 × 6 = 6 وحدات (اتباعت وحدة واحدة)
+    ).sellUnits(1),
+    ProductItem.fromCartonQuantity(
       id: '6',
       name: 'حليب بارمالات 1 لتر',
       barcode: '6006',
@@ -70,9 +75,9 @@ class InMemoryProductRepository implements ProductRepository {
       sellPrice: 18,
       cartonPrice: 152,
       unitsPerCarton: 12,
-      quantity: 60,
+      cartonQuantity: 5, // 5 × 12 = 60 وحدة (لسه متباعش منها حاجة)
     ),
-    const ProductItem(
+    ProductItem.fromCartonQuantity(
       id: '7',
       name: 'ماء معدني 1.5 لتر',
       barcode: '6007',
@@ -80,7 +85,7 @@ class InMemoryProductRepository implements ProductRepository {
       sellPrice: 5,
       cartonPrice: 28,
       unitsPerCarton: 12,
-      quantity: 120,
+      cartonQuantity: 10, // 10 × 12 = 120 وحدة (لسه متباعش منها حاجة)
     ),
   ];
 

@@ -2,4 +2,6 @@ import 'package:cashier_app_v2/features/dashbord/data/models/dashboard_model.dar
 
 abstract class DashboardRepository {
   Future<DashboardModel> getDashboard();
+
+  Stream<DashboardModel> watchDashboardData();
 }
