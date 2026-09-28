@@ -80,6 +80,13 @@ import 'features/purchases/domian/usecases/watch_purchase_invoices.dart'
 import 'features/purchases/presentation/bloc/product_search_bloc.dart' as _i376;
 import 'features/purchases/presentation/bloc/purchase_bloc/purchase_bloc.dart'
     as _i748;
+import 'features/reports/data/datasources/sales_report_local_data_source.dart'
+    as _i96;
+import 'features/reports/data/repositories/sales_report_repository_impl.dart'
+    as _i1019;
+import 'features/reports/domain/repositories/sales_report_repository.dart'
+    as _i859;
+import 'features/reports/presentation/bloc/sales_report_bloc.dart' as _i757;
 import 'features/suppliers/data/datasource/supplier_local_datasource.dart'
     as _i397;
 import 'features/suppliers/data/datasource/supplier_local_datasource_impl.dart'
@@ -137,11 +144,19 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i397.SupplierLocalDataSource>(
       () => _i901.SupplierLocalDataSourceImpl(gh<_i111.AppDatabase>()),
     );
+    gh.lazySingleton<_i96.SalesReportLocalDataSource>(
+      () => _i96.SalesReportLocalDataSourceImpl(gh<_i111.AppDatabase>()),
+    );
     gh.factory<_i711.DebtLocalDataSource>(
       () => _i892.DebtLocalDataSourceImpl(gh<_i111.AppDatabase>()),
     );
     gh.lazySingleton<_i954.ProductLookupLocalDataSource>(
       () => _i140.ProductLookupLocalDataSourceImpl(gh<_i111.AppDatabase>()),
+    );
+    gh.lazySingleton<_i859.SalesReportRepository>(
+      () => _i1019.SalesReportRepositoryImpl(
+        gh<_i96.SalesReportLocalDataSource>(),
+      ),
     );
     gh.lazySingleton<_i785.PurchaseRepository>(
       () => _i742.PurchaseRepositoryImpl(gh<_i217.PurchaseLocalDataSource>()),
@@ -150,6 +165,9 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i107.SupplierStatementRepositoryImpl(
         gh<_i1011.SupplierStatementLocalDataSource>(),
       ),
+    );
+    gh.factory<_i757.SalesReportBloc>(
+      () => _i757.SalesReportBloc(gh<_i859.SalesReportRepository>()),
     );
     gh.factory<_i484.DashboardRepository>(
       () => _i102.DashboardRepositoryImpl(gh<_i989.DashboardLocalDataSource>()),

@@ -24,7 +24,7 @@ class SalesTable extends StatelessWidget {
   });
 
   // invoice, date, cashier, items, total, method, status
-  static const _flexes = [2, 2, 2, 1, 2, 2, 2];
+  static const _flexes = [2, 2, 2, 1, 2, 2, 1];
   static const double _tableMinWidth = 1000.0;
 
   Color _methodColor(PaymentMethod method) {
@@ -33,6 +33,8 @@ class SalesTable extends StatelessWidget {
         return AppColors.success;
       case PaymentMethod.visa:
         return const Color(0xFF4C8DFF);
+      case PaymentMethod.wallet:
+        return AppColors.danger;
       case PaymentMethod.credit:
         return AppColors.gold;
     }
@@ -42,6 +44,8 @@ class SalesTable extends StatelessWidget {
     switch (method) {
       case PaymentMethod.cash:
         return 'كاش';
+      case PaymentMethod.wallet:
+        return 'محفظه الكترونيه';
       case PaymentMethod.visa:
         return 'فيزا';
       case PaymentMethod.credit:
@@ -127,9 +131,9 @@ class SalesTable extends StatelessWidget {
           Expanded(flex: _flexes[1], child: Text(_formatDate(row.date), style: const TextStyle(color: AppColors.textPrimary))),
           Expanded(flex: _flexes[2], child: Text(row.cashier, style: const TextStyle(color: AppColors.textPrimary))),
           Expanded(flex: _flexes[3], child: Text('${row.itemsCount}', style: const TextStyle(color: AppColors.textSecondary))),
-          Expanded(flex: _flexes[4], child: Text('${row.total.toStringAsFixed(0)} ج', style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600))),
+          Expanded(flex: _flexes[6], child: Text('${row.total.toStringAsFixed(0)} ج', style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600))),
           Expanded(flex: _flexes[5], child: StatusBadge(label: _methodLabel(row.paymentMethod), color: methodColor)),
-          Expanded(flex: _flexes[6], child: StatusBadge(label: statusLabel, color: statusColor)),
+          Expanded(flex: _flexes[0], child: StatusBadge(label: statusLabel, color: statusColor)),
         ],
       ),
     );

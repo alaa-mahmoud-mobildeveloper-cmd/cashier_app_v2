@@ -9,6 +9,9 @@ class StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      alignment: Alignment.center,
+      width: 80,
+      margin: const EdgeInsets.only(right: 12),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       decoration: BoxDecoration(
         color: color.withOpacity(0.15),
