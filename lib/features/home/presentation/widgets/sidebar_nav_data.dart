@@ -35,6 +35,8 @@ const List<SidebarSectionData> sidebarSections = [
       SidebarNavItemData(icon: Icons.grid_view, label: 'لوحة التحكم', route: AppRoutes.dashboard),
       SidebarNavItemData(icon: Icons.show_chart, label: 'تقرير المبيعات', route: AppRoutes.reports),
       SidebarNavItemData(icon: Icons.inventory_2_outlined, label: 'إدارة الأصناف', route: AppRoutes.inventory),
+      SidebarNavItemData(icon: Icons.receipt_long_rounded, label: 'فواتير التوريد', route: AppRoutes.purchases),
+      SidebarNavItemData(icon: Icons.person_outline, label: 'الموردين', route: AppRoutes.suppliers),
       SidebarNavItemData(icon: Icons.people_outline, label: 'العمال', route: AppRoutes.workers),
       SidebarNavItemData(icon: Icons.description_outlined, label: 'إضافة مصروف', route: AppRoutes.expenses),
       SidebarNavItemData(icon: Icons.lock_outline, label: 'قفلة اليومية', route: AppRoutes.closing),

@@ -1,6 +1,8 @@
 import 'package:cashier_app_v2/features/dashbord/presentation/screen/dashboard_screen.dart';
 import 'package:cashier_app_v2/features/inventory/presentation/screen/products_screen.dart';
+import 'package:cashier_app_v2/features/purchases/presentation/screen/purchases_invoice_screen.dart';
 import 'package:cashier_app_v2/features/reports/presentation/screen/sales_report_screen.dart';
+import 'package:cashier_app_v2/features/suppliers/presentation/screens/suppliers_screen.dart';
 import 'package:flutter/material.dart';
 
 import 'package:cashier_app_v2/core/constants/app_colors.dart';
@@ -31,6 +33,8 @@ class _HomeScreenState extends State<HomeScreen> {
     const DashboardScreen(),
     const SalesReportScreen(),
     const ProductsScreen(),
+    const PurchaseInvoicesScreen(),
+    const SuppliersScreen(),
     const WorkersScreen(),
     const ExpensesScreen(),
     const ClosingScreen(),

@@ -25,7 +25,29 @@ import '../widgets/products_table.dart';
 class ProductsScreen extends StatelessWidget {
   const ProductsScreen({super.key});
 
-  static const _categories = ['مواد غذائية', 'مشروبات', 'سجائر','منظفات', 'ألبان','اخرى'];
+  static const _categories = [
+    'مواد غذائية',
+    "مشروبات",
+    "مياه وعصائر",
+    "ألبان",
+    "جبن",
+    "زبادي",
+    "بسكوت"
+        "حلويات",
+    "شوكولاتة",
+    "سناكس",
+    "معلبات",
+    "أرز ومكرونة",
+    "بقوليات",
+    "زيوت وسمن",
+    "سكر وملح",
+    "توابل",
+    "صلصات",
+    "شاي وقهوة",
+    "منظفات",
+    "مجمدات",
+    "أخرى",
+  ];
 
   @override
   Widget build(BuildContext context) {

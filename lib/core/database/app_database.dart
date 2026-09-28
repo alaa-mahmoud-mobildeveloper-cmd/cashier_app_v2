@@ -1,26 +1,27 @@
 import 'dart:io';
 
+import 'package:drift/drift.dart';
+import 'package:drift/native.dart';
+import 'package:injectable/injectable.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+
 import 'package:cashier_app_v2/core/database/tables/app_settings.dart';
 import 'package:cashier_app_v2/core/database/tables/customers_table.dart';
 import 'package:cashier_app_v2/core/database/tables/dailyclosing.dart';
 import 'package:cashier_app_v2/core/database/tables/expenses.dart';
+import 'package:cashier_app_v2/core/database/tables/invoice_items_table.dart';
+import 'package:cashier_app_v2/core/database/tables/invoices_table.dart';
+import 'package:cashier_app_v2/core/database/tables/products_table.dart';
 import 'package:cashier_app_v2/core/database/tables/purchase_items.dart';
+import 'package:cashier_app_v2/core/database/tables/purchase_payments.dart';
 import 'package:cashier_app_v2/core/database/tables/purchases.dart';
+import 'package:cashier_app_v2/core/database/tables/stock_movements_table.dart';
 import 'package:cashier_app_v2/core/database/tables/suppliers.dart';
-import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
-import 'package:injectable/injectable.dart';
-
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
-
-import 'tables/users_table.dart';
-import 'tables/products_table.dart';
-import 'tables/invoices_table.dart';
-import 'tables/invoice_items_table.dart';
-import 'tables/stock_movements_table.dart';
+import 'package:cashier_app_v2/core/database/tables/users_table.dart';
 
 part 'app_database.g.dart';
+
 @lazySingleton
 @DriftDatabase(
   tables: [
@@ -32,6 +33,7 @@ part 'app_database.g.dart';
     Suppliers,
     Purchases,
     PurchaseItems,
+    PurchasePayments,
     Expenses,
     DailyClosings,
     Customers,
@@ -40,87 +42,123 @@ part 'app_database.g.dart';
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
+
   @override
-  int get schemaVersion => 14;   // كانت 13
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (m) async {
+    onCreate: (Migrator m) async {
       await m.createAll();
     },
-
-    onUpgrade: (m, from, to) async {
+    onUpgrade: (Migrator m, int from, int to) async {
+      // Version 2
       if (from < 2) {
-        await m.createTable(stockMovements);
+        await _safeCreateTable(m, stockMovements);
       }
 
+      // Version 3
       if (from < 3) {
-        await m.createTable(suppliers);
+        await _safeCreateTable(m, suppliers);
       }
 
-      if (from < 12) {
-        await m.createTable(customers);
-      }
-
+      // Version 4
       if (from < 4) {
-        await m.createTable(purchases);
-        await m.createTable(purchaseItems);
+        await _safeCreateTable(m, purchases);
+        await _safeCreateTable(m, purchaseItems);
       }
 
+      // Version 6
       if (from < 6) {
-        await m.createTable(expenses);
+        await _safeCreateTable(m, expenses);
       }
 
+      // Version 8
       if (from < 8) {
-        await m.createTable(dailyClosings);
+        await _safeCreateTable(m, dailyClosings);
       }
 
+      // Version 9
       if (from < 9) {
-        await m.createTable(appSettings);
+        await _safeCreateTable(m, appSettings);
       }
 
+      // Version 11
       if (from < 11) {
-        await m.addColumn(invoices, invoices.profit);
-        await m.addColumn(invoiceItems, invoiceItems.profit);
+        await _safeAddColumn(m, invoices, invoices.profit);
+        await _safeAddColumn(m, invoiceItems, invoiceItems.profit);
       }
 
       // Version 12
-      // إضافة سعر الكرتونة وعدد الوحدات فيها لحساب سعر شراء الوحدة تلقائيًا
       if (from < 12) {
-        await m.addColumn(products, products.cartonPrice);
-        await m.addColumn(products, products.unitsPerCarton);
+        await _safeAddColumn(m, products, products.cartonPrice);
+        await _safeAddColumn(m, products, products.unitsPerCarton);
+        await _safeCreateTable(m, customers);
       }
 
       // Version 13
-      // ربط الفاتورة بعميل مسجَّل (اختياري) عشان شاشة الآجل والمديونيات
       if (from < 13) {
-        await m.addColumn(invoices, invoices.customerId);
+        await _safeAddColumn(m, invoices, invoices.customerId);
       }
 
       // Version 14
-      // إضافة عدد الكراتين (cartonQuantity) كبيانة توريد منفصلة عن
-      // stockQuantity (الكمية الفعلية بالوحدة اللي بتنقص مع البيع).
-      // من غير الميجريشن دي، أي قاعدة بيانات موجودة فعليًا على جهاز
-      // المستخدم مش هتعرف العمود الجديد، والقراءة منها هتضرب null
-      // check exception لأن العمود non-nullable وله قيمة افتراضية
-      // بس على الـ insert مش على الصفوف القديمة.
       if (from < 14) {
-        await m.addColumn(products, products.cartonQuantity);
+        await _safeAddColumn(m, products, products.cartonQuantity);
+      }
+
+      // Version 15
+      if (from < 15) {
+        await _safeAddColumn(m, purchaseItems, purchaseItems.cartonQuantity);
+        await _safeAddColumn(m, purchaseItems, purchaseItems.unitsPerCarton);
+        await _safeAddColumn(m, purchaseItems, purchaseItems.salePrice);
+      }
+
+      // Version 16
+      if (from < 16) {
+        await _safeAddColumn(m, purchases, purchases.dueDate);
+        await _safeCreateTable(m, purchasePayments);
       }
     },
   );
+
+  Future<void> _safeAddColumn(
+      Migrator m,
+      TableInfo table,
+      GeneratedColumn column,
+      ) async {
+    try {
+      await m.addColumn(table, column);
+    } catch (e) {
+      final message = e.toString().toLowerCase();
+      if (!message.contains('duplicate column name')) {
+        rethrow;
+      }
+      print('Migration: column ${column.name} already exists, skipped.');
+    }
+  }
+
+  Future<void> _safeCreateTable(
+      Migrator m,
+      TableInfo table,
+      ) async {
+    try {
+      await m.createTable(table);
+    } catch (e) {
+      final message = e.toString().toLowerCase();
+      if (!message.contains('already exists')) {
+        rethrow;
+      }
+      print('Migration: table already exists, skipped.');
+    }
+  }
 }
 
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dir = await getApplicationDocumentsDirectory();
+    final file = File(p.join(dir.path, 'nova_pos.sqlite'));
 
-    final file = File(
-      p.join(dir.path, 'nova_pos.sqlite'),
-    );
-
-    print('DATABASE PATH:');
-    print(file.path);
+    print('DATABASE PATH: ${file.path}');
 
     return NativeDatabase.createInBackground(file);
   });

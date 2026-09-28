@@ -1,7 +1,6 @@
 import 'package:cashier_app_v2/core/database/tables/suppliers.dart';
 import 'package:drift/drift.dart';
 
-
 class Purchases extends Table {
   IntColumn get id => integer().autoIncrement()();
 
@@ -21,6 +20,8 @@ class Purchases extends Table {
   RealColumn get netTotal => real()();
 
   TextColumn get paymentMethod => text()();
+
+  DateTimeColumn get dueDate => dateTime().nullable()();
 
   DateTimeColumn get createdAt =>
       dateTime().withDefault(currentDateAndTime)();

@@ -7,8 +7,20 @@ class AppRoutes {
   static const workers = 'workers';
   static const expenses = 'expenses';
   static const closing = 'closing';
+  static const purchases = 'purchases';
+  static const suppliers = 'suppliers';
 
   static const List<String> order = [
-    pos, debts, dashboard, reports, inventory, workers, expenses, closing,
+    pos,
+    debts,
+    dashboard,
+    reports,
+    inventory,
+    purchases,
+    suppliers,
+    workers,
+    expenses,
+    closing,
+
   ];
 }

@@ -1,3 +1,4 @@
+import 'package:cashier_app_v2/features/purchases/presentation/screen/purchases_screen.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 
@@ -43,7 +44,12 @@ class ProductsHeader extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         ElevatedButton.icon(
-          onPressed: onAddPressed,
+          onPressed: (){
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const PurchasesScreen()),
+            );
+          },
           icon: const Icon(Icons.add, size: 20),
           label: const Text('إضافة فاتوره توريد'),
         ),
