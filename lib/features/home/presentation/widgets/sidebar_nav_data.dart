@@ -86,7 +86,7 @@ const List<SidebarSectionData> sidebarSections = [
       ),
       SidebarNavItemData(
         icon: Icons.lock_outline,
-        label: 'قفلة اليومية',
+        label: 'اغلاق اليومية',
         route: AppRoutes.closing,
       ),
     ],
