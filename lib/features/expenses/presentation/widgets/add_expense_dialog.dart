@@ -36,7 +36,9 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
     super.initState();
     final expense = widget.expense;
     _titleController = TextEditingController(text: expense?.title ?? '');
-    _descriptionController = TextEditingController(text: expense?.description ?? '');
+    _descriptionController = TextEditingController(
+      text: expense?.description ?? '',
+    );
     _amountController = TextEditingController(
       text: expense == null ? '' : expense.amount.toString(),
     );
@@ -64,6 +66,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
     }
 
     final newExpense = Expense(
+      id: widget.expense?.id,
       title: _titleController.text.trim(),
       category: _selectedCategory,
       description: _descriptionController.text.trim(),
@@ -89,7 +92,8 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
               children: [
                 TextFormField(
                   controller: _titleController,
-                  validator: (v) => v == null || v.trim().isEmpty ? 'أدخل اسم المصروف' : null,
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'أدخل اسم المصروف' : null,
                   decoration: const InputDecoration(
                     labelText: 'اسم المصروف',
                     prefixIcon: Icon(Icons.receipt_long_outlined),
@@ -97,24 +101,30 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _selectedCategory,
+                  initialValue: _selectedCategory,
                   decoration: const InputDecoration(
                     labelText: 'التصنيف',
                     prefixIcon: Icon(Icons.category_outlined),
                   ),
                   items: _categories
-                      .map((category) => DropdownMenuItem(
-                    value: category,
-                    child: Text(category),
-                  ))
+                      .map(
+                        (category) => DropdownMenuItem(
+                          value: category,
+                          child: Text(category),
+                        ),
+                      )
                       .toList(),
-                  onChanged: (value) => setState(() => _selectedCategory = value!),
+                  onChanged: (value) =>
+                      setState(() => _selectedCategory = value!),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _amountController,
-                  validator: (v) => v == null || v.trim().isEmpty ? 'أدخل المبلغ' : null,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'أدخل المبلغ' : null,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   decoration: const InputDecoration(
                     labelText: 'المبلغ',
                     suffixText: 'ج',
@@ -132,7 +142,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<ExpenseStatus>(
-                  value: _selectedStatus,
+                  initialValue: _selectedStatus,
                   decoration: const InputDecoration(
                     labelText: 'الحالة',
                     prefixIcon: Icon(Icons.flag_outlined),
@@ -147,7 +157,8 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                       child: Text('معلق'),
                     ),
                   ],
-                  onChanged: (value) => setState(() => _selectedStatus = value!),
+                  onChanged: (value) =>
+                      setState(() => _selectedStatus = value!),
                 ),
               ],
             ),
@@ -157,12 +168,12 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('إلغاء', style: TextStyle(color: AppColors.textSecondary)),
+          child: const Text(
+            'إلغاء',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
         ),
-        ElevatedButton(
-          onPressed: _save,
-          child: const Text('حفظ'),
-        ),
+        ElevatedButton(onPressed: _save, child: const Text('حفظ')),
       ],
     );
   }

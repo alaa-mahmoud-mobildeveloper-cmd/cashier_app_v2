@@ -11,8 +11,9 @@ class Expenses extends Table {
 
   TextColumn get notes => text().nullable()();
 
+  TextColumn get status => text().withDefault(const Constant('paid'))();
+
   DateTimeColumn get expenseDate => dateTime()();
 
-  DateTimeColumn get createdAt =>
-      dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }

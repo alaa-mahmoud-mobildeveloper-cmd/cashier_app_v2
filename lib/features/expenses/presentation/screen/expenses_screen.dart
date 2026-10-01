@@ -1,6 +1,9 @@
+import 'package:cashier_app_v2/core/database/app_database.dart' hide Expense;
+import 'package:cashier_app_v2/features/expenses/data/repositories/expense_repository.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../di.dart';
 import '../../domain/entities/expense.dart';
 import '../widgets/add_expense_dialog.dart';
 import '../widgets/expense_details_dialog.dart';
@@ -18,6 +21,8 @@ class ExpensesScreen extends StatefulWidget {
 
 class _ExpensesScreenState extends State<ExpensesScreen> {
   final TextEditingController _searchController = TextEditingController();
+  late final ExpenseRepository _repository;
+  late final Stream<List<Expense>> _expensesStream;
   String _selectedCategory = 'الكل';
 
   static const List<String> _categories = [
@@ -30,30 +35,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     'أخرى',
   ];
 
-  final List<Expense> _expenses = [
-    Expense(
-      title: 'إيجار المحل',
-      category: 'إيجار',
-      description: 'إيجار شهر سبتمبر',
-      date: DateTime(2026, 9, 1),
-      amount: 3500,
-    ),
-    Expense(
-      title: 'فاتورة الكهرباء',
-      category: 'مرافق',
-      description: 'استهلاك الكهرباء',
-      date: DateTime(2026, 9, 5),
-      amount: 850,
-    ),
-    Expense(
-      title: 'شراء أكياس',
-      category: 'مشتريات',
-      description: 'أكياس بلاستيك وورقية',
-      date: DateTime(2026, 9, 7),
-      amount: 420,
-      status: ExpenseStatus.pending,
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _repository = ExpenseRepository(getIt<AppDatabase>());
+    _expensesStream = _repository.watchExpenses();
+  }
 
   @override
   void dispose() {
@@ -61,27 +48,36 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     super.dispose();
   }
 
-  double get _totalExpenses => _expenses.fold(0, (sum, e) => sum + e.amount);
-
-  double get _paidExpenses => _expenses
-      .where((e) => e.status == ExpenseStatus.paid)
-      .fold(0, (sum, e) => sum + e.amount);
-
-  double get _pendingExpenses => _expenses
-      .where((e) => e.status == ExpenseStatus.pending)
-      .fold(0, (sum, e) => sum + e.amount);
-
-  String _formatMoney(double value) => '${value.toStringAsFixed(2)} ج';
-
-  List<Expense> get _filteredExpenses {
+  List<Expense> _filteredExpenses(List<Expense> expenses) {
     final query = _searchController.text.trim().toLowerCase();
-    return _expenses.where((expense) {
-      final matchesCategory = _selectedCategory == 'الكل' || expense.category == _selectedCategory;
-      final matchesQuery = query.isEmpty ||
+    return expenses.where((expense) {
+      final matchesCategory =
+          _selectedCategory == 'الكل' || expense.category == _selectedCategory;
+      final matchesQuery =
+          query.isEmpty ||
           expense.title.toLowerCase().contains(query) ||
           expense.description.toLowerCase().contains(query);
       return matchesCategory && matchesQuery;
     }).toList();
+  }
+
+  double _totalExpenses(List<Expense> expenses) =>
+      expenses.fold(0, (sum, expense) => sum + expense.amount);
+
+  double _paidExpenses(List<Expense> expenses) => expenses
+      .where((expense) => expense.status == ExpenseStatus.paid)
+      .fold(0, (sum, expense) => sum + expense.amount);
+
+  double _pendingExpenses(List<Expense> expenses) => expenses
+      .where((expense) => expense.status == ExpenseStatus.pending)
+      .fold(0, (sum, expense) => sum + expense.amount);
+
+  String _formatMoney(double value) => '${value.toStringAsFixed(2)} ج';
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _addExpense() async {
@@ -89,8 +85,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       context: context,
       builder: (_) => const AddExpenseDialog(),
     );
-    if (expense != null && mounted) {
-      setState(() => _expenses.add(expense));
+    if (expense == null || !mounted) return;
+
+    try {
+      await _repository.addExpense(expense);
+      if (mounted) _showMessage('تم حفظ المصروف');
+    } catch (error) {
+      if (mounted) _showMessage('تعذر حفظ المصروف: $error');
     }
   }
 
@@ -99,11 +100,19 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       context: context,
       builder: (_) => AddExpenseDialog(expense: oldExpense),
     );
-    if (updated != null && mounted) {
-      setState(() {
-        final index = _expenses.indexOf(oldExpense);
-        if (index >= 0) _expenses[index] = updated;
-      });
+    if (updated == null || !mounted) return;
+
+    try {
+      final affectedRows = await _repository.updateExpense(updated);
+      if (mounted) {
+        _showMessage(
+          affectedRows == 0
+              ? 'لم يتم العثور على المصروف لتعديله'
+              : 'تم تعديل المصروف',
+        );
+      }
+    } catch (error) {
+      if (mounted) _showMessage('تعذر تعديل المصروف: $error');
     }
   }
 
@@ -126,8 +135,22 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       ),
     );
 
-    if (confirmed == true && mounted) {
-      setState(() => _expenses.remove(expense));
+    if (confirmed != true || !mounted) return;
+    final id = expense.id;
+    if (id == null) {
+      _showMessage('تعذر حذف المصروف لعدم وجود رقم تعريف');
+      return;
+    }
+
+    try {
+      final deletedRows = await _repository.deleteExpense(id);
+      if (mounted) {
+        _showMessage(
+          deletedRows == 0 ? 'لم يتم العثور على المصروف' : 'تم حذف المصروف',
+        );
+      }
+    } catch (error) {
+      if (mounted) _showMessage('تعذر حذف المصروف: $error');
     }
   }
 
@@ -138,26 +161,41 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: SafeArea(
-          child: LayoutBuilder(
-            builder: (_, constraints) {
-              final isCompact = constraints.maxWidth < 800;
-              return SingleChildScrollView(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isCompact ? 12 : 28,
-                  vertical: 24,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    ExpensesHeader(onAdd: _addExpense),
-                    const SizedBox(height: 16),
-                    _buildSummarySection(isCompact),
-                    const SizedBox(height: 16),
-                    _buildFiltersSection(),
-                    const SizedBox(height: 12),
-                    _buildTableSection(),
-                  ],
-                ),
+          child: StreamBuilder<List<Expense>>(
+            stream: _expensesStream,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text('تعذر تحميل المصروفات: ${snapshot.error}'),
+                );
+              }
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final expenses = snapshot.data!;
+              return LayoutBuilder(
+                builder: (_, constraints) {
+                  final isCompact = constraints.maxWidth < 800;
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isCompact ? 12 : 28,
+                      vertical: 24,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ExpensesHeader(onAdd: _addExpense),
+                        const SizedBox(height: 16),
+                        _buildSummarySection(expenses, isCompact),
+                        const SizedBox(height: 16),
+                        _buildFiltersSection(),
+                        const SizedBox(height: 12),
+                        _buildTableSection(expenses),
+                      ],
+                    ),
+                  );
+                },
               );
             },
           ),
@@ -166,7 +204,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  Widget _buildSummarySection(bool isCompact) {
+  Widget _buildSummarySection(List<Expense> expenses, bool isCompact) {
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -177,19 +215,19 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       children: [
         ExpenseSummaryCard(
           title: 'إجمالي المصروفات',
-          value: _formatMoney(_totalExpenses),
+          value: _formatMoney(_totalExpenses(expenses)),
           color: AppColors.gold,
           icon: Icons.account_balance_wallet_outlined,
         ),
         ExpenseSummaryCard(
           title: 'المصروفات المدفوعة',
-          value: _formatMoney(_paidExpenses),
+          value: _formatMoney(_paidExpenses(expenses)),
           color: AppColors.success,
           icon: Icons.check_circle_outline,
         ),
         ExpenseSummaryCard(
           title: 'المصروفات المعلقة',
-          value: _formatMoney(_pendingExpenses),
+          value: _formatMoney(_pendingExpenses(expenses)),
           color: AppColors.danger,
           icon: Icons.pending_actions_outlined,
         ),
@@ -207,8 +245,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  Widget _buildTableSection() {
-    final filtered = _filteredExpenses;
+  Widget _buildTableSection(List<Expense> expenses) {
+    final filtered = _filteredExpenses(expenses);
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -220,7 +258,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             children: [
               Container(
                 color: AppColors.surfaceLight,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 16,
+                ),
                 child: const Row(
                   children: [
                     Expanded(flex: 3, child: Text('المصروف')),
@@ -242,9 +283,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 )
               else
                 ...filtered.map(
-                      (expense) => ExpenseRow(
+                  (expense) => ExpenseRow(
                     expense: expense,
-                    onView: () => showDialog(
+                    onView: () => showDialog<void>(
                       context: context,
                       builder: (_) => ExpenseDetailsDialog(expense: expense),
                     ),
