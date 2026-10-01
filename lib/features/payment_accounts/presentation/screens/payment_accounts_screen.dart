@@ -222,33 +222,36 @@ class _PaymentAccountsScreenState extends State<PaymentAccountsScreen> {
                 ),
               ],
             ),
-            if (isWallet) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: account.isActive
-                          ? () => _adjustWalletBalance(account, isDeposit: true)
-                          : null,
-                      icon: const Icon(Icons.add_circle_outline),
-                      label: const Text('إيداع'),
-                    ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: account.isActive
+                        ? () => _adjustPaymentAccountBalance(
+                            account,
+                            isDeposit: true,
+                          )
+                        : null,
+                    icon: const Icon(Icons.add_circle_outline),
+                    label: const Text('إيداع'),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: account.isActive
-                          ? () =>
-                                _adjustWalletBalance(account, isDeposit: false)
-                          : null,
-                      icon: const Icon(Icons.remove_circle_outline),
-                      label: const Text('سحب'),
-                    ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: account.isActive
+                        ? () => _adjustPaymentAccountBalance(
+                            account,
+                            isDeposit: false,
+                          )
+                        : null,
+                    icon: const Icon(Icons.remove_circle_outline),
+                    label: const Text('سحب'),
                   ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -294,7 +297,7 @@ class _PaymentAccountsScreenState extends State<PaymentAccountsScreen> {
     }
   }
 
-  Future<void> _adjustWalletBalance(
+  Future<void> _adjustPaymentAccountBalance(
     PaymentAccountSummary account, {
     required bool isDeposit,
   }) async {
@@ -599,26 +602,24 @@ class _AccountFormDialogState extends State<_AccountFormDialog> {
                     return null;
                   },
                 ),
-                if (isWallet) ...[
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _openingBalanceController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'الرصيد الموجود حاليًا في المحفظة',
-                      helperText: 'سيُسجل كرصيد افتتاحي في سجل الحركات',
-                    ),
-                    validator: (value) {
-                      final amount = double.tryParse(value?.trim() ?? '');
-                      if (amount == null || !amount.isFinite || amount < 0) {
-                        return 'أدخل رصيدًا صحيحًا غير سالب';
-                      }
-                      return null;
-                    },
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _openingBalanceController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
                   ),
-                ],
+                  decoration: const InputDecoration(
+                    labelText: 'الرصيد الموجود حاليًا في الحساب',
+                    helperText: 'سيُسجل كرصيد افتتاحي في سجل الحركات',
+                  ),
+                  validator: (value) {
+                    final amount = double.tryParse(value?.trim() ?? '');
+                    if (amount == null || !amount.isFinite || amount < 0) {
+                      return 'أدخل رصيدًا صحيحًا غير سالب';
+                    }
+                    return null;
+                  },
+                ),
               ],
             ),
           ),
@@ -643,9 +644,7 @@ class _AccountFormDialogState extends State<_AccountFormDialog> {
         name: _nameController.text.trim(),
         provider: _providerController.text.trim(),
         reference: _referenceController.text.trim(),
-        openingBalance: _type == PaymentAccountType.wallet.name
-            ? double.parse(_openingBalanceController.text.trim())
-            : 0,
+        openingBalance: double.parse(_openingBalanceController.text.trim()),
       ),
     );
   }
