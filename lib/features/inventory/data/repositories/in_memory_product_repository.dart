@@ -1,20 +1,10 @@
 import 'dart:async';
 
 import 'package:cashier_app_v2/features/inventory/domain/entities/product_items_entit.dart';
+import 'package:cashier_app_v2/features/inventory/domain/entities/product_status.dart';
 
 import '../../domain/repositories/product_repository.dart';
 
-/// تنفيذ في الذاكرة لـ [ProductRepository]. ده اللي بيخلي الشاشة شغالة
-/// دلوقتي من غير ما تستنى ربط قاعدة البيانات.
-///
-/// لما جدول Drift يكون جاهز، تقدر تستبدلها بـ DriftProductRepository
-/// (شوف drift_product_repository.dart) من غير ما تغيّر حرف واحد في
-/// الـ BLoC أو الشاشة، لأن الاتنين بيطبقوا نفس الـ interface.
-///
-/// كل الأصناف هنا بتتبنى بـ [ProductItem.fromCartonQuantity] عشان
-/// الكمية بالوحدة تتحسب تلقائيًا من الكمية بالكرتونة أول مرة
-/// (quantity = cartonQuantity × unitsPerCarton)، بالظبط زي ما هيحصل
-/// وقت إضافة صنف حقيقي من الشاشة.
 class InMemoryProductRepository implements ProductRepository {
   final List<ProductItem> _items = [
     ProductItem.fromCartonQuantity(
@@ -25,7 +15,7 @@ class InMemoryProductRepository implements ProductRepository {
       sellPrice: 28,
       cartonPrice: 230,
       unitsPerCarton: 12,
-      cartonQuantity: 4, // 4 × 12 = 48 وحدة (اتباع منها 3 وحدات لحد دلوقتي)
+      cartonQuantity: 4,
     ).sellUnits(3),
     ProductItem.fromCartonQuantity(
       id: '2',
@@ -35,7 +25,7 @@ class InMemoryProductRepository implements ProductRepository {
       sellPrice: 12,
       cartonPrice: 155,
       unitsPerCarton: 20,
-      cartonQuantity: 1, // 1 × 20 = 20 وحدة (اتباع منها 17 وحدة)
+      cartonQuantity: 1,
     ).sellUnits(17),
     ProductItem.fromCartonQuantity(
       id: '3',
@@ -45,7 +35,7 @@ class InMemoryProductRepository implements ProductRepository {
       sellPrice: 45,
       cartonPrice: 188,
       unitsPerCarton: 6,
-      cartonQuantity: 1, // اتباعت كل الكرتونة، الصنف نفذ
+      cartonQuantity: 1,
     ).sellUnits(6),
     ProductItem.fromCartonQuantity(
       id: '4',
@@ -55,7 +45,7 @@ class InMemoryProductRepository implements ProductRepository {
       sellPrice: 85,
       cartonPrice: 235,
       unitsPerCarton: 4,
-      cartonQuantity: 6, // 6 × 4 = 24 وحدة (اتباع منها وحدتين)
+      cartonQuantity: 6,
     ).sellUnits(2),
     ProductItem.fromCartonQuantity(
       id: '5',
@@ -65,7 +55,7 @@ class InMemoryProductRepository implements ProductRepository {
       sellPrice: 55,
       cartonPrice: 224,
       unitsPerCarton: 6,
-      cartonQuantity: 1, // 1 × 6 = 6 وحدات (اتباعت وحدة واحدة)
+      cartonQuantity: 1,
     ).sellUnits(1),
     ProductItem.fromCartonQuantity(
       id: '6',
@@ -75,7 +65,7 @@ class InMemoryProductRepository implements ProductRepository {
       sellPrice: 18,
       cartonPrice: 152,
       unitsPerCarton: 12,
-      cartonQuantity: 5, // 5 × 12 = 60 وحدة (لسه متباعش منها حاجة)
+      cartonQuantity: 5,
     ),
     ProductItem.fromCartonQuantity(
       id: '7',
@@ -85,23 +75,123 @@ class InMemoryProductRepository implements ProductRepository {
       sellPrice: 5,
       cartonPrice: 28,
       unitsPerCarton: 12,
-      cartonQuantity: 10, // 10 × 12 = 120 وحدة (لسه متباعش منها حاجة)
+      cartonQuantity: 10,
     ),
   ];
 
-  final _controller = StreamController<List<ProductItem>>.broadcast();
+  final StreamController<List<ProductItem>> _controller =
+  StreamController<List<ProductItem>>.broadcast();
 
   InMemoryProductRepository() {
     _emit();
   }
 
-  void _emit() => _controller.add(List.unmodifiable(_items));
+  void _emit() {
+    if (!_controller.isClosed) {
+      _controller.add(
+        List.unmodifiable(_items),
+      );
+    }
+  }
 
   @override
-  Stream<List<ProductItem>> watchProducts() => _controller.stream;
+  Future<ProductPage> getProductsPage({
+    required int offset,
+    required int limit,
+    String searchQuery = '',
+    ProductFilter filter = ProductFilter.all,
+    String? category,
+  }) async {
+    final filtered = _applyFilters(
+      searchQuery: searchQuery,
+      filter: filter,
+      category: category,
+    );
+
+    final safeOffset = offset.clamp(0, filtered.length);
+    final safeEnd = (safeOffset + limit).clamp(
+      safeOffset,
+      filtered.length,
+    );
+
+    final page = filtered.sublist(
+      safeOffset,
+      safeEnd,
+    );
+
+    return ProductPage(
+      items: List.unmodifiable(page),
+      totalCount: filtered.length,
+    );
+  }
 
   @override
-  Future<List<ProductItem>> getProducts() async => List.unmodifiable(_items);
+  Future<ProductStats> getProductStats({
+    String searchQuery = '',
+    ProductFilter filter = ProductFilter.all,
+    String? category,
+  }) async {
+    final products = _applyFilters(
+      searchQuery: searchQuery,
+      filter: filter,
+      category: category,
+    );
+
+    double stockValue = 0;
+    double expectedProfit = 0;
+    int outOfStockCount = 0;
+    int lowStockCount = 0;
+
+    for (final product in products) {
+      stockValue += product.unitCost * product.quantity;
+      expectedProfit += product.profit * product.quantity;
+
+      if (product.quantity <= 0) {
+        outOfStockCount++;
+      } else if (product.quantity <= 10) {
+        lowStockCount++;
+      }
+    }
+
+    return ProductStats(
+      productsCount: products.length,
+      stockValue: stockValue,
+      expectedProfit: expectedProfit,
+      outOfStockCount: outOfStockCount,
+      lowStockCount: lowStockCount,
+    );
+  }
+
+  List<ProductItem> _applyFilters({
+    required String searchQuery,
+    required ProductFilter filter,
+    String? category,
+  }) {
+    final query = searchQuery.trim().toLowerCase();
+
+    return _items.where((product) {
+      final matchesSearch = query.isEmpty ||
+          product.name.toLowerCase().contains(query) ||
+          product.barcode.toLowerCase().contains(query);
+
+      final matchesCategory =
+          category == null || category.isEmpty || product.category == category;
+
+      final matchesFilter = filter.matches(product.status);
+
+      return matchesSearch && matchesCategory && matchesFilter;
+    }).toList();
+  }
+
+  @override
+  Stream<List<ProductItem>> watchProducts() {
+    return _controller.stream;
+  }
+
+  @override
+  Future<List<ProductItem>> getProducts() async {
+    return List.unmodifiable(_items);
+  }
 
   @override
   Future<void> addProduct(ProductItem product) async {
@@ -111,16 +201,26 @@ class InMemoryProductRepository implements ProductRepository {
 
   @override
   Future<void> updateProduct(ProductItem product) async {
-    final index = _items.indexWhere((p) => p.id == product.id);
-    if (index != -1) _items[index] = product;
-    _emit();
+    final index = _items.indexWhere(
+          (item) => item.id == product.id,
+    );
+
+    if (index != -1) {
+      _items[index] = product;
+      _emit();
+    }
   }
 
   @override
   Future<void> deleteProduct(String id) async {
-    _items.removeWhere((p) => p.id == id);
+    _items.removeWhere(
+          (item) => item.id == id,
+    );
+
     _emit();
   }
 
-  void dispose() => _controller.close();
+  void dispose() {
+    _controller.close();
+  }
 }

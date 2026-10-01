@@ -3,21 +3,17 @@ import 'package:cashier_app_v2/features/inventory/domain/repositories/product_re
 import 'package:injectable/injectable.dart';
 
 @injectable
-class GetProducts {
+class GetProductStats {
   final ProductRepository _repository;
 
-  const GetProducts(this._repository);
+  const GetProductStats(this._repository);
 
-  Future<ProductPage> call({
-    required int offset,
-    required int limit,
+  Future<ProductStats> call({
     String searchQuery = '',
     ProductFilter filter = ProductFilter.all,
     String? category,
   }) {
-    return _repository.getProductsPage(
-      offset: offset,
-      limit: limit,
+    return _repository.getProductStats(
       searchQuery: searchQuery,
       filter: filter,
       category: category,

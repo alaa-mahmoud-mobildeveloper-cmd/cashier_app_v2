@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'package:cashier_app_v2/core/constants/app_colors.dart';
 import 'package:cashier_app_v2/features/inventory/domain/entities/product_items_entit.dart';
 
@@ -17,7 +18,6 @@ class AddProductDialog extends StatefulWidget {
 }
 
 class _AddProductDialogState extends State<AddProductDialog> {
-  // ==================== Controllers & Keys ====================
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _nameCtrl;
@@ -29,13 +29,14 @@ class _AddProductDialogState extends State<AddProductDialog> {
   late final TextEditingController _quantityCtrl;
 
   late String _category;
+  late List<String> _categories;
 
-  // ==================== Getters ====================
   bool get _isEditing => widget.initial != null;
 
   double get _previewUnitCost {
     final cartonPrice = double.tryParse(_cartonPriceCtrl.text.trim()) ?? 0;
     final unitsPerCarton = int.tryParse(_unitsPerCartonCtrl.text.trim()) ?? 0;
+
     return unitsPerCarton > 0 ? cartonPrice / unitsPerCarton : 0;
   }
 
@@ -51,10 +52,20 @@ class _AddProductDialogState extends State<AddProductDialog> {
 
   int get _previewQuantity => int.tryParse(_quantityCtrl.text.trim()) ?? 0;
 
-  // ==================== Lifecycle Methods ====================
   @override
   void initState() {
     super.initState();
+
+    _categories = widget.categories
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toSet()
+        .toList();
+
+    if (_categories.isEmpty) {
+      _categories = [' عام'];
+    }
+
     _initializeControllers();
     _setupListeners();
   }
@@ -68,22 +79,33 @@ class _AddProductDialogState extends State<AddProductDialog> {
     _unitsPerCartonCtrl.dispose();
     _cartonQuantityCtrl.dispose();
     _quantityCtrl.dispose();
+
     super.dispose();
   }
 
-  // ==================== Initialization & Logic ====================
   void _initializeControllers() {
     final p = widget.initial;
 
     _nameCtrl = TextEditingController(text: p?.name ?? '');
     _barcodeCtrl = TextEditingController(text: p?.barcode ?? '');
     _sellPriceCtrl = TextEditingController(text: p?.sellPrice.toString() ?? '');
-    _cartonPriceCtrl = TextEditingController(text: p?.cartonPrice.toString() ?? '');
-    _unitsPerCartonCtrl = TextEditingController(text: p?.unitsPerCarton.toString() ?? '');
-    _cartonQuantityCtrl = TextEditingController(text: p?.cartonQuantity.toString() ?? '');
+    _cartonPriceCtrl =
+        TextEditingController(text: p?.cartonPrice.toString() ?? '');
+    _unitsPerCartonCtrl =
+        TextEditingController(text: p?.unitsPerCarton.toString() ?? '');
+    _cartonQuantityCtrl =
+        TextEditingController(text: p?.cartonQuantity.toString() ?? '');
     _quantityCtrl = TextEditingController(text: p?.quantity.toString() ?? '');
 
-    _category = p?.category ?? widget.categories.first;
+    final initialCategory = p?.category?.trim();
+
+    if (initialCategory != null &&
+        initialCategory.isNotEmpty &&
+        _categories.contains(initialCategory)) {
+      _category = initialCategory;
+    } else {
+      _category = _categories.first;
+    }
   }
 
   void _setupListeners() {
@@ -94,7 +116,9 @@ class _AddProductDialogState extends State<AddProductDialog> {
       _quantityCtrl,
     ]) {
       ctrl.addListener(() {
-        if (mounted) setState(() {});
+        if (mounted) {
+          setState(() {});
+        }
       });
     }
 
@@ -105,8 +129,10 @@ class _AddProductDialogState extends State<AddProductDialog> {
   }
 
   void _updateQuantityFromCartons() {
-    final cartonQuantity = double.tryParse(_cartonQuantityCtrl.text.trim()) ?? 0;
+    final cartonQuantity =
+        double.tryParse(_cartonQuantityCtrl.text.trim()) ?? 0;
     final unitsPerCarton = int.tryParse(_unitsPerCartonCtrl.text.trim()) ?? 0;
+
     final quantity = (cartonQuantity * unitsPerCarton).round();
 
     if (_quantityCtrl.text != quantity.toString()) {
@@ -150,15 +176,20 @@ class _AddProductDialogState extends State<AddProductDialog> {
     Navigator.of(context).pop(item);
   }
 
-  // ==================== Validators ====================
   String? _requiredValidator(String? v) {
-    if (v == null || v.trim().isEmpty) return 'مطلوب';
+    if (v == null || v.trim().isEmpty) {
+      return 'مطلوب';
+    }
     return null;
   }
 
   String? _numberValidator(String? v) {
-    if (v == null || v.trim().isEmpty) return 'مطلوب';
-    if (double.tryParse(v.trim()) == null) return 'رقم غير صحيح';
+    if (v == null || v.trim().isEmpty) {
+      return 'مطلوب';
+    }
+    if (double.tryParse(v.trim()) == null) {
+      return 'رقم غير صحيح';
+    }
     return null;
   }
 
@@ -167,7 +198,9 @@ class _AddProductDialogState extends State<AddProductDialog> {
     if (err != null) return err;
 
     final n = int.tryParse(v!.trim());
-    if (n == null || n <= 0) return 'لازم يكون أكبر من صفر';
+    if (n == null || n <= 0) {
+      return 'لازم يكون أكبر من صفر';
+    }
     return null;
   }
 
@@ -176,7 +209,9 @@ class _AddProductDialogState extends State<AddProductDialog> {
     if (err != null) return err;
 
     final n = double.tryParse(v!.trim());
-    if (n == null || n < 0) return 'مينفعش يكون سالب';
+    if (n == null || n < 0) {
+      return 'مينفعش يكون سالب';
+    }
     return null;
   }
 
@@ -185,26 +220,33 @@ class _AddProductDialogState extends State<AddProductDialog> {
     if (err != null) return err;
 
     final n = int.tryParse(v!.trim());
-    if (n == null || n < 0) return 'مينفعش يكون سالب';
+    if (n == null || n < 0) {
+      return 'مينفعش يكون سالب';
+    }
     return null;
   }
 
-  // ==================== UI Build Methods ====================
   @override
   Widget build(BuildContext context) {
     final marginColor = _previewProfit < 0
         ? AppColors.danger
-        : (_previewProfit == 0 ? AppColors.textSecondary : AppColors.success);
+        : (_previewProfit == 0
+        ? AppColors.textSecondary
+        : AppColors.success);
 
     return Dialog(
       backgroundColor: AppColors.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.border),
+        side: const BorderSide(
+          color: AppColors.border,
+        ),
       ),
       insetPadding: const EdgeInsets.all(20),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
+        constraints: const BoxConstraints(
+          maxWidth: 480,
+        ),
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Form(
@@ -245,32 +287,52 @@ class _AddProductDialogState extends State<AddProductDialog> {
         TextFormField(
           controller: _nameCtrl,
           textAlign: TextAlign.right,
-          decoration: const InputDecoration(labelText: 'اسم الصنف'),
+          decoration: const InputDecoration(
+            labelText: 'اسم الصنف',
+          ),
           validator: _requiredValidator,
         ),
         const SizedBox(height: 14),
         TextFormField(
           controller: _barcodeCtrl,
           textAlign: TextAlign.right,
-          decoration: const InputDecoration(labelText: 'الباركود'),
+          decoration: const InputDecoration(
+            labelText: 'الباركود',
+          ),
           validator: _requiredValidator,
         ),
         const SizedBox(height: 14),
         DropdownButtonFormField<String>(
-          value: _category,
+          initialValue: _category,
           dropdownColor: AppColors.surfaceLight,
-          decoration: const InputDecoration(labelText: 'الفئة'),
-          items: widget.categories
-              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+          decoration: const InputDecoration(
+            labelText: 'الفئة',
+          ),
+          items: _categories
+              .map(
+                (category) => DropdownMenuItem<String>(
+              value: category,
+              child: Text(category),
+            ),
+          )
               .toList(),
-          onChanged: (v) => setState(() => _category = v ?? _category),
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() {
+              _category = value;
+            });
+          },
         ),
         const SizedBox(height: 14),
         TextFormField(
           controller: _sellPriceCtrl,
           textAlign: TextAlign.right,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(labelText: 'سعر البيع'),
+          keyboardType: const TextInputType.numberWithOptions(
+            decimal: true,
+          ),
+          decoration: const InputDecoration(
+            labelText: 'سعر البيع',
+          ),
           validator: _numberValidator,
         ),
         const SizedBox(height: 14),
@@ -280,8 +342,12 @@ class _AddProductDialogState extends State<AddProductDialog> {
               child: TextFormField(
                 controller: _cartonPriceCtrl,
                 textAlign: TextAlign.right,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'سعر الكرتونة'),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'سعر الكرتونة',
+                ),
                 validator: _numberValidator,
               ),
             ),
@@ -291,7 +357,9 @@ class _AddProductDialogState extends State<AddProductDialog> {
                 controller: _unitsPerCartonCtrl,
                 textAlign: TextAlign.right,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'وحدة/كرتونة'),
+                decoration: const InputDecoration(
+                  labelText: 'وحدة/كرتونة',
+                ),
                 validator: _positiveIntValidator,
               ),
             ),
@@ -304,8 +372,12 @@ class _AddProductDialogState extends State<AddProductDialog> {
               child: TextFormField(
                 controller: _cartonQuantityCtrl,
                 textAlign: TextAlign.right,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'الكمية بالكرتونة'),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'الكمية بالكرتونة',
+                ),
                 validator: _nonNegativeDoubleValidator,
               ),
             ),
@@ -315,7 +387,9 @@ class _AddProductDialogState extends State<AddProductDialog> {
                 controller: _quantityCtrl,
                 textAlign: TextAlign.right,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'الكمية بالوحدة'),
+                decoration: const InputDecoration(
+                  labelText: 'الكمية بالوحدة',
+                ),
                 validator: _nonNegativeIntValidator,
               ),
             ),
@@ -331,7 +405,9 @@ class _AddProductDialogState extends State<AddProductDialog> {
       decoration: BoxDecoration(
         color: AppColors.surfaceLight,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: AppColors.border,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -358,7 +434,11 @@ class _AddProductDialogState extends State<AddProductDialog> {
     );
   }
 
-  Widget _buildPreviewRow(String value, String label, Color valueColor) {
+  Widget _buildPreviewRow(
+      String value,
+      String label,
+      Color valueColor,
+      ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -405,7 +485,9 @@ class _AddProductDialogState extends State<AddProductDialog> {
         Expanded(
           child: ElevatedButton(
             onPressed: _submit,
-            child: Text(_isEditing ? 'حفظ التعديلات' : 'حفظ الصنف'),
+            child: Text(
+              _isEditing ? 'حفظ التعديلات' : 'حفظ الصنف',
+            ),
           ),
         ),
       ],

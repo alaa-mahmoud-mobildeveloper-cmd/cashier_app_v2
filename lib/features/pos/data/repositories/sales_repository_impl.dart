@@ -11,20 +11,60 @@ class SalesRepositoryImpl implements SalesRepository {
   SalesRepositoryImpl(this._db);
 
   @override
-  Future<List<Product>> getAllProducts() async {
-    return await _db.select(_db.products).get();
-  }
-  @override
-  Stream<List<Product>> watchAllProducts() {
-    return _db.select(_db.products).watch();
+  Future<List<Product>> getProductsPage({
+    required int limit,
+    required int offset,
+    String searchQuery = '',
+    String category = 'الكل',
+  }) async {
+    final query = _db.select(_db.products);
+
+    final search = searchQuery.trim();
+
+    if (search.isNotEmpty) {
+      query.where(
+            (product) =>
+        product.name.like('%$search%') |
+        product.barcode.like('%$search%'),
+      );
+    }
+
+    if (category.trim().isNotEmpty && category != 'الكل') {
+      query.where(
+            (product) => product.category.equals(category),
+      );
+    }
+
+    query
+      ..orderBy([
+            (product) => OrderingTerm(
+          expression: product.name,
+          mode: OrderingMode.asc,
+        ),
+      ])
+      ..limit(
+        limit,
+        offset: offset,
+      );
+
+    return query.get();
   }
 
   @override
   Future<Product?> getProductByBarcode(String barcode) async {
-    final query = _db.select(_db.products)
-      ..where((p) => p.barcode.equals(barcode));
+    final code = barcode.trim();
 
-    return await query.getSingleOrNull();
+    if (code.isEmpty) {
+      return null;
+    }
+
+    final query = _db.select(_db.products)
+      ..where(
+            (product) => product.barcode.equals(code),
+      )
+      ..limit(1);
+
+    return query.getSingleOrNull();
   }
 
   @override
@@ -51,21 +91,28 @@ class SalesRepositoryImpl implements SalesRepository {
     final invoiceNumber =
         'INV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
 
-    return await _db.transaction(() async {
+    return _db.transaction(() async {
       double totalProfit = 0;
+
       final products = <int, Product>{};
 
       for (final item in cartItems) {
         final product = await (_db.select(_db.products)
-          ..where((p) => p.id.equals(item.product.id)))
+          ..where(
+                (p) => p.id.equals(item.product.id),
+          ))
             .getSingleOrNull();
 
         if (product == null) {
-          throw Exception('المنتج غير موجود: ${item.product.name}');
+          throw Exception(
+            'المنتج غير موجود: ${item.product.name}',
+          );
         }
 
         if (product.stockQuantity < item.quantity) {
-          throw Exception('المخزون غير كافي للمنتج ${product.name}');
+          throw Exception(
+            'المخزون غير كافي للمنتج ${product.name}',
+          );
         }
 
         products[product.id] = product;
@@ -114,7 +161,9 @@ class SalesRepositoryImpl implements SalesRepository {
         );
 
         await (_db.update(_db.products)
-          ..where((p) => p.id.equals(product.id)))
+          ..where(
+                (p) => p.id.equals(product.id),
+          ))
             .write(
           ProductsCompanion(
             stockQuantity: Value(
@@ -140,7 +189,7 @@ class SalesRepositoryImpl implements SalesRepository {
 
   @override
   Future<List<Invoice>> getRecentInvoices() async {
-    return await (_db.select(_db.invoices)
+    return (_db.select(_db.invoices)
       ..orderBy([
             (invoice) => OrderingTerm(
           expression: invoice.createdAt,
@@ -156,11 +205,12 @@ class SalesRepositoryImpl implements SalesRepository {
     required int userId,
     int? invoiceId,
   }) async {
-    return await _db.transaction(() async {
-      // لو تم تمرير ID معين نجيبه، وإلا نجيب آخر فاتورة
+    return _db.transaction(() async {
       final targetInvoice = invoiceId != null
           ? await (_db.select(_db.invoices)
-        ..where((i) => i.id.equals(invoiceId)))
+        ..where(
+              (i) => i.id.equals(invoiceId),
+        ))
           .getSingleOrNull()
           : await (_db.select(_db.invoices)
         ..orderBy([
@@ -183,7 +233,9 @@ class SalesRepositoryImpl implements SalesRepository {
       }
 
       final invoiceItems = await (_db.select(_db.invoiceItems)
-        ..where((item) => item.invoiceId.equals(targetInvoice.id)))
+        ..where(
+              (item) => item.invoiceId.equals(targetInvoice.id),
+        ))
           .get();
 
       if (invoiceItems.isEmpty) {
@@ -192,22 +244,29 @@ class SalesRepositoryImpl implements SalesRepository {
         );
       }
 
-      // إعادة الكميات للمخزون
       for (final item in invoiceItems) {
         final product = await (_db.select(_db.products)
-          ..where((p) => p.id.equals(item.productId)))
+          ..where(
+                (p) => p.id.equals(item.productId),
+          ))
             .getSingleOrNull();
 
         if (product == null) {
-          throw Exception('المنتج غير موجود: ${item.productName}');
+          throw Exception(
+            'المنتج غير موجود: ${item.productName}',
+          );
         }
 
         final newStock = product.stockQuantity + item.quantity;
 
         await (_db.update(_db.products)
-          ..where((p) => p.id.equals(product.id)))
+          ..where(
+                (p) => p.id.equals(product.id),
+          ))
             .write(
-          ProductsCompanion(stockQuantity: Value(newStock)),
+          ProductsCompanion(
+            stockQuantity: Value(newStock),
+          ),
         );
 
         await _db.into(_db.stockMovements).insert(
@@ -216,20 +275,24 @@ class SalesRepositoryImpl implements SalesRepository {
             userId: userId,
             quantity: item.quantity,
             type: 'return',
-            note: Value('إرجاع الفاتورة ${targetInvoice.invoiceNumber}'),
+            note: Value(
+              'إرجاع الفاتورة ${targetInvoice.invoiceNumber}',
+            ),
           ),
         );
       }
 
-      // تحديث حالة الفاتورة إلى returned
       await (_db.update(_db.invoices)
-        ..where((invoice) => invoice.id.equals(targetInvoice.id)))
+        ..where(
+              (invoice) => invoice.id.equals(targetInvoice.id),
+        ))
           .write(
-        const InvoicesCompanion(status: Value('returned')),
+        const InvoicesCompanion(
+          status: Value('returned'),
+        ),
       );
 
       return targetInvoice.id;
     });
   }
-
 }

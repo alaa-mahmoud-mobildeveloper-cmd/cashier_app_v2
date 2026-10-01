@@ -1,8 +1,6 @@
 import 'package:cashier_app_v2/features/inventory/domain/entities/product_items_entit.dart';
+import 'package:cashier_app_v2/features/inventory/domain/entities/product_status.dart';
 import 'package:equatable/equatable.dart';
-
-
-import '../../domain/entities/product_status.dart';
 
 sealed class ProductsEvent extends Equatable {
   const ProductsEvent();
@@ -11,7 +9,6 @@ sealed class ProductsEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-/// أول إيفنت بيتبعت لما الشاشة تفتح: بيحمّل القائمة ويشترك في تحديثاتها.
 class ProductsStarted extends ProductsEvent {
   const ProductsStarted();
 }
@@ -20,6 +17,15 @@ class ProductsSearchChanged extends ProductsEvent {
   final String query;
 
   const ProductsSearchChanged(this.query);
+
+  @override
+  List<Object?> get props => [query];
+}
+
+class ProductsSearchSubmitted extends ProductsEvent {
+  final String query;
+
+  const ProductsSearchSubmitted(this.query);
 
   @override
   List<Object?> get props => [query];
@@ -41,6 +47,14 @@ class ProductsCategoryChanged extends ProductsEvent {
 
   @override
   List<Object?> get props => [category];
+}
+
+class ProductsLoadMoreRequested extends ProductsEvent {
+  const ProductsLoadMoreRequested();
+}
+
+class ProductsRefreshRequested extends ProductsEvent {
+  const ProductsRefreshRequested();
 }
 
 class ProductAddRequested extends ProductsEvent {
@@ -68,16 +82,4 @@ class ProductDeleteRequested extends ProductsEvent {
 
   @override
   List<Object?> get props => [id];
-}
-
-/// إيفنت داخلي بيتبعت لنفس الـ Bloc كل ما الـ Repository يبعت نسخة
-/// جديدة من القائمة عن طريق watchProducts(). مش المفروض حد بره الـ
-/// Bloc يبعته يدويًا.
-class ProductsListUpdated extends ProductsEvent {
-  final List<ProductItem> products;
-
-  const ProductsListUpdated(this.products);
-
-  @override
-  List<Object?> get props => [products];
 }

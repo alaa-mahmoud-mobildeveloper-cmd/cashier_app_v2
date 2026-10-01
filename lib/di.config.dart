@@ -42,6 +42,7 @@ import 'features/inventory/domain/repositories/product_repository.dart'
     as _i448;
 import 'features/inventory/domain/usecases/add_product.dart' as _i564;
 import 'features/inventory/domain/usecases/delete_product.dart' as _i737;
+import 'features/inventory/domain/usecases/get_product_stats.dart' as _i170;
 import 'features/inventory/domain/usecases/get_products.dart' as _i123;
 import 'features/inventory/domain/usecases/update_product.dart' as _i34;
 import 'features/inventory/domain/usecases/watch_products.dart' as _i250;
@@ -260,6 +261,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i737.DeleteProduct>(
       () => _i737.DeleteProduct(gh<_i448.ProductRepository>()),
+    );
+    gh.factory<_i170.GetProductStats>(
+      () => _i170.GetProductStats(gh<_i448.ProductRepository>()),
     );
     gh.factory<_i123.GetProducts>(
       () => _i123.GetProducts(gh<_i448.ProductRepository>()),

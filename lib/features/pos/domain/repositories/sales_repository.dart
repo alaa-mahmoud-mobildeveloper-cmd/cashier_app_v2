@@ -2,9 +2,12 @@ import 'package:cashier_app_v2/core/database/app_database.dart';
 import 'package:cashier_app_v2/features/pos/data/models/cart_item_model.dart';
 
 abstract class SalesRepository {
-  Future<List<Product>> getAllProducts();
-  Stream<List<Product>> watchAllProducts();
-
+  Future<List<Product>> getProductsPage({
+    required int limit,
+    required int offset,
+    String searchQuery,
+    String category,
+  });
 
   Future<Product?> getProductByBarcode(String barcode);
 
@@ -19,7 +22,6 @@ abstract class SalesRepository {
 
   Future<List<Invoice>> getRecentInvoices();
 
-  // ⬇️ عدل هذه الدالة لتتقبل invoiceId اختياري ⬇️
   Future<int> returnInvoice({
     required int userId,
     int? invoiceId,
