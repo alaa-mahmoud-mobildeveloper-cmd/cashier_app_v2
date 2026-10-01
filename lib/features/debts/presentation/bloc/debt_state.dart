@@ -32,7 +32,7 @@ class DebtLoaded extends DebtState {
   const DebtLoaded({
     required this.invoices,
     this.searchQuery = '',
-    this.selectedPaymentFilter = 'الكل',
+    this.selectedPaymentFilter = 'الاجل',
     this.selectedStatusFilter = 'الكل',
   });
 
