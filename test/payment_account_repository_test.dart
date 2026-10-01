@@ -145,6 +145,117 @@ void main() {
     },
   );
 
+  test('tracks wallet opening balance, deposits, and withdrawals', () async {
+    final walletId = await accounts.addAccount(
+      type: 'wallet',
+      name: 'محفظة الرصيد',
+      openingBalance: 500,
+      userId: userId,
+    );
+
+    await accounts.recordDeposit(
+      accountId: walletId,
+      userId: userId,
+      amount: 125,
+      note: 'إضافة رصيد نقدي',
+    );
+    await accounts.recordWithdrawal(
+      accountId: walletId,
+      userId: userId,
+      amount: 75,
+      note: 'سحب للمصروفات',
+    );
+
+    final summary = (await accounts.watchSummaries().first).single;
+    expect(summary.balance, 550);
+    expect(summary.transactionCount, 3);
+
+    final entries = await accounts.watchEntries(walletId).first;
+    expect(entries, hasLength(3));
+    expect(
+      entries.singleWhere((entry) => entry.kind == 'opening_balance').amount,
+      500,
+    );
+    expect(
+      entries.singleWhere((entry) => entry.kind == 'deposit').note,
+      'إضافة رصيد نقدي',
+    );
+    expect(
+      entries.singleWhere((entry) => entry.kind == 'withdrawal').note,
+      'سحب للمصروفات',
+    );
+    expect(
+      entries.singleWhere((entry) => entry.kind == 'withdrawal').kindLabel,
+      'سحب',
+    );
+    expect(
+      entries
+          .singleWhere((entry) => entry.kind == 'withdrawal')
+          .decreasesBalance,
+      isTrue,
+    );
+
+    await expectLater(
+      accounts.recordWithdrawal(
+        accountId: walletId,
+        userId: userId,
+        amount: 551,
+      ),
+      throwsStateError,
+    );
+    await expectLater(
+      accounts.recordDeposit(
+        accountId: walletId,
+        userId: userId,
+        amount: double.nan,
+      ),
+      throwsArgumentError,
+    );
+
+    final visaId = await accounts.addAccount(type: 'visa', name: 'جهاز فيزا');
+    await expectLater(
+      accounts.recordDeposit(accountId: visaId, userId: userId, amount: 10),
+      throwsStateError,
+    );
+    expect(
+      (await accounts.watchSummaries().first)
+          .singleWhere((account) => account.id == walletId)
+          .balance,
+      550,
+    );
+
+    await accounts.setAccountActive(accountId: walletId, isActive: false);
+    await expectLater(
+      accounts.recordDeposit(accountId: walletId, userId: userId, amount: 1),
+      throwsStateError,
+    );
+  });
+
+  test('validates opening balance and records it atomically', () async {
+    expect(
+      () => accounts.addAccount(
+        type: 'wallet',
+        name: 'محفظة بلا مستخدم',
+        openingBalance: 10,
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => accounts.addAccount(
+        type: 'visa',
+        name: 'جهاز فيزا برصيد',
+        openingBalance: 10,
+        userId: userId,
+      ),
+      throwsArgumentError,
+    );
+    expect(await database.select(database.paymentAccounts).get(), isEmpty);
+    expect(
+      await database.select(database.paymentAccountTransactions).get(),
+      isEmpty,
+    );
+  });
+
   test(
     'rejects missing, inactive, or mismatched digital accounts atomically',
     () async {

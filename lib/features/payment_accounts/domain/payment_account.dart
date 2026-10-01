@@ -76,4 +76,15 @@ class PaymentAccountEntry {
   });
 
   bool get isRefund => kind == 'refund';
+
+  bool get decreasesBalance => kind == 'refund' || kind == 'withdrawal';
+
+  String get kindLabel => switch (kind) {
+    'sale' => 'تحصيل',
+    'refund' => 'استرداد',
+    'opening_balance' => 'رصيد افتتاحي',
+    'deposit' => 'إيداع',
+    'withdrawal' => 'سحب',
+    _ => 'حركة',
+  };
 }
