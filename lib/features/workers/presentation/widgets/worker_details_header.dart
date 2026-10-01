@@ -16,7 +16,11 @@ class WorkerDetailsHeader extends StatelessWidget {
           children: [
             IconButton(
               onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.arrow_forward_ios, color: AppColors.textSecondary, size: 18),
+              icon: const Icon(
+                Icons.arrow_forward_ios,
+                color: AppColors.textSecondary,
+                size: 18,
+              ),
               tooltip: 'رجوع',
             ),
             const SizedBox(width: 8),
@@ -30,7 +34,7 @@ class WorkerDetailsHeader extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Text(
-              '${worker.role} — باركود: ${worker.barcode ?? 'W002'}',
+              '${worker.role} — باركود: ${worker.barcode ?? '—'}',
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 14,
@@ -42,7 +46,10 @@ class WorkerDetailsHeader extends StatelessWidget {
           backgroundColor: AppColors.gold,
           child: Text(
             worker.name.isNotEmpty ? worker.name.substring(0, 1) : 'ع',
-            style: const TextStyle(color: AppColors.background, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: AppColors.background,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ],

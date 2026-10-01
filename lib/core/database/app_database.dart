@@ -19,6 +19,8 @@ import 'package:cashier_app_v2/core/database/tables/purchases.dart';
 import 'package:cashier_app_v2/core/database/tables/stock_movements_table.dart';
 import 'package:cashier_app_v2/core/database/tables/suppliers.dart';
 import 'package:cashier_app_v2/core/database/tables/users_table.dart';
+import 'package:cashier_app_v2/core/database/tables/worker_advances.dart';
+import 'package:cashier_app_v2/core/database/tables/worker_product_issues.dart';
 
 part 'app_database.g.dart';
 
@@ -38,13 +40,17 @@ part 'app_database.g.dart';
     DailyClosings,
     Customers,
     AppSettings,
+    WorkerAdvances,
+    WorkerProductIssues,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  AppDatabase.forTesting(QueryExecutor executor) : super(executor);
+
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -118,14 +124,25 @@ class AppDatabase extends _$AppDatabase {
         await _safeAddColumn(m, purchases, purchases.dueDate);
         await _safeCreateTable(m, purchasePayments);
       }
+
+      // Version 17: worker profile fields and worker details ledger.
+      if (from < 17) {
+        await _safeAddColumn(m, users, users.phone);
+        await _safeAddColumn(m, users, users.jobTitle);
+        await _safeAddColumn(m, users, users.salary);
+        await _safeAddColumn(m, users, users.barcode);
+        await _safeAddColumn(m, users, users.isWorker);
+        await _safeCreateTable(m, workerAdvances);
+        await _safeCreateTable(m, workerProductIssues);
+      }
     },
   );
 
   Future<void> _safeAddColumn(
-      Migrator m,
-      TableInfo table,
-      GeneratedColumn column,
-      ) async {
+    Migrator m,
+    TableInfo table,
+    GeneratedColumn column,
+  ) async {
     try {
       await m.addColumn(table, column);
     } catch (e) {
@@ -137,10 +154,7 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
-  Future<void> _safeCreateTable(
-      Migrator m,
-      TableInfo table,
-      ) async {
+  Future<void> _safeCreateTable(Migrator m, TableInfo table) async {
     try {
       await m.createTable(table);
     } catch (e) {
