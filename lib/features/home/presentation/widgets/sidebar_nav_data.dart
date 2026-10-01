@@ -80,6 +80,11 @@ const List<SidebarSectionData> sidebarSections = [
         route: AppRoutes.expenses,
       ),
       SidebarNavItemData(
+        icon: Icons.account_balance_wallet_outlined,
+        label: 'المحافظ والفيزا',
+        route: AppRoutes.paymentAccounts,
+      ),
+      SidebarNavItemData(
         icon: Icons.lock_outline,
         label: 'قفلة اليومية',
         route: AppRoutes.closing,

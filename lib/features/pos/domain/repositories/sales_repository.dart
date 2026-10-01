@@ -18,6 +18,7 @@ abstract class SalesRepository {
     required double tax,
     required String paymentMethod,
     double? paidAmount,
+    int? paymentAccountId,
   });
 
   Future<List<Invoice>> getRecentInvoices();

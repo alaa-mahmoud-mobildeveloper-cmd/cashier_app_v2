@@ -10,6 +10,7 @@ import 'package:cashier_app_v2/features/expenses/presentation/screen/expenses_sc
 import 'package:cashier_app_v2/features/home/presentation/screens/my_details_screen.dart';
 import 'package:cashier_app_v2/features/inventory/presentation/screen/products_screen.dart';
 import 'package:cashier_app_v2/features/pos/presentation/screen/pos_screen.dart';
+import 'package:cashier_app_v2/features/payment_accounts/presentation/screens/payment_accounts_screen.dart';
 import 'package:cashier_app_v2/features/purchases/presentation/screen/purchases_invoice_screen.dart';
 import 'package:cashier_app_v2/features/reports/presentation/screen/sales_report_screen.dart';
 import 'package:cashier_app_v2/features/suppliers/presentation/screens/suppliers_screen.dart';
@@ -64,6 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
       AppRoutes.suppliers => const SuppliersScreen(),
       AppRoutes.workers => const WorkersScreen(),
       AppRoutes.expenses => const ExpensesScreen(),
+      AppRoutes.paymentAccounts => const PaymentAccountsScreen(),
       AppRoutes.closing => const ClosingScreen(),
       AppRoutes.myDetails => const MyDetailsScreen(),
       _ => const Center(child: Text('هذه الشاشة غير متاحة')),

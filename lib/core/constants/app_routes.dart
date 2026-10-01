@@ -6,6 +6,7 @@ class AppRoutes {
   static const inventory = 'inventory';
   static const workers = 'workers';
   static const expenses = 'expenses';
+  static const paymentAccounts = 'payment_accounts';
   static const closing = 'closing';
   static const purchases = 'purchases';
   static const suppliers = 'suppliers';
@@ -21,6 +22,7 @@ class AppRoutes {
     suppliers,
     workers,
     expenses,
+    paymentAccounts,
     closing,
     myDetails,
   ];

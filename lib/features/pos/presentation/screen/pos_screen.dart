@@ -13,6 +13,8 @@ import 'package:cashier_app_v2/features/pos/presentation/widgets/empty_cart_stat
 import 'package:cashier_app_v2/features/pos/presentation/widgets/payment_methods.dart';
 import 'package:cashier_app_v2/features/pos/presentation/widgets/return_invoice_dialog.dart';
 import 'package:cashier_app_v2/features/pos/presentation/widgets/simple_calculator_dialog.dart';
+import 'package:cashier_app_v2/features/payment_accounts/data/payment_account_repository.dart';
+import 'package:cashier_app_v2/features/payment_accounts/domain/payment_account.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -53,6 +55,9 @@ late final FocusNode _barcodeFocusNode;
 Timer? _searchDebounce;
 
 PaymentMethod paymentMethod = PaymentMethod.cash;
+PaymentAccountInfo? _selectedPaymentAccount;
+late final PaymentAccountRepository _paymentAccountRepository;
+bool _isSelectingPaymentAccount = false;
 
 String category = 'الكل';
 
@@ -87,6 +92,7 @@ static const categories = [
 void initState() {
 super.initState();
 
+_paymentAccountRepository = PaymentAccountRepository(getIt<AppDatabase>());
 _barcodeFocusNode = FocusNode();
 _barcodeFocusNode.addListener(_handleBarcodeFocus);
 
@@ -142,6 +148,104 @@ category: category,
 );
 },
 );
+}
+
+void _handlePaymentMethodSelected(PaymentMethod method) {
+  if (method == PaymentMethod.wallet || method == PaymentMethod.visa) {
+    unawaited(_selectDigitalPaymentAccount(method));
+    return;
+  }
+
+  setState(() {
+    paymentMethod = method;
+    _selectedPaymentAccount = null;
+  });
+}
+
+Future<void> _selectDigitalPaymentAccount(PaymentMethod method) async {
+  setState(() => _isSelectingPaymentAccount = true);
+  try {
+    final accounts = await _paymentAccountRepository.getActiveAccounts(
+      type: method.name,
+    );
+    if (!mounted) return;
+
+    if (accounts.isEmpty) {
+      _showMessage(
+        method == PaymentMethod.wallet
+            ? 'لا توجد محفظة نشطة. اطلب من المدير إضافة حساب أولًا.'
+            : 'لا يوجد حساب فيزا نشط. اطلب من المدير إضافة حساب أولًا.',
+        isError: true,
+      );
+      return;
+    }
+
+    final account = accounts.length == 1
+        ? accounts.single
+        : await _choosePaymentAccount(accounts);
+    if (!mounted || account == null) return;
+
+    setState(() {
+      paymentMethod = method;
+      _selectedPaymentAccount = account;
+    });
+  } catch (error) {
+    if (mounted) {
+      _showMessage('تعذر تحميل حسابات الدفع: $error', isError: true);
+    }
+  } finally {
+    if (mounted) setState(() => _isSelectingPaymentAccount = false);
+  }
+}
+
+Future<PaymentAccountInfo?> _choosePaymentAccount(
+  List<PaymentAccountInfo> accounts,
+) {
+  return showDialog<PaymentAccountInfo>(
+    context: context,
+    builder: (dialogContext) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: AlertDialog(
+        title: const Text('اختر حساب الاستلام'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420, maxHeight: 360),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: accounts
+                  .map(
+                    (account) => ListTile(
+                      leading: Icon(
+                        account.type == PaymentAccountType.wallet.name
+                            ? Icons.wallet_outlined
+                            : Icons.credit_card,
+                        color: AppColors.gold,
+                      ),
+                      title: Text(account.name),
+                      subtitle: Text(
+                        [
+                          if (account.provider?.isNotEmpty ?? false)
+                            account.provider!,
+                          if (account.reference?.isNotEmpty ?? false)
+                            account.reference!,
+                        ].join(' • '),
+                      ),
+                      onTap: () => Navigator.of(dialogContext).pop(account),
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('إلغاء'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 void _handleCategorySelected(String value) {
@@ -361,6 +465,7 @@ const ClearCart(),
    discountController.text = '0';
    receivedController.text = '0';
    paymentMethod = PaymentMethod.cash;
+   _selectedPaymentAccount = null;
    deferredPaidAmount = null;
  });
 
@@ -421,6 +526,7 @@ context.read<CartBloc>().add(
 CheckoutCart(
 paymentMethod: paymentMethod.name,
 paidAmount: null,
+paymentAccountId: _selectedPaymentAccount?.id,
 ),
 );
 }
@@ -494,6 +600,7 @@ receivedController.text = '0';
 
 setState(() {
 paymentMethod = PaymentMethod.cash;
+_selectedPaymentAccount = null;
 deferredPaidAmount = null;
 });
 
@@ -770,16 +877,13 @@ FontWeight.bold,
 const SizedBox(height: 10),
 PaymentMethods(
 selected: paymentMethod,
-onSelected: (value) {
-setState(() {
-paymentMethod = value;
-});
-},
+onSelected: _handlePaymentMethodSelected,
 onDeferredConfirm:
 (name, phone, amount) {
 setState(() {
 paymentMethod =
 PaymentMethod.credit;
+_selectedPaymentAccount = null;
 deferredPaidAmount = amount;
 });
 
@@ -792,6 +896,41 @@ cartItems: state.cartItems,
 );
 },
 ),
+if (paymentMethod == PaymentMethod.wallet ||
+    paymentMethod == PaymentMethod.visa) ...[
+  const SizedBox(height: 8),
+  Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    decoration: BoxDecoration(
+      color: AppColors.surfaceLight,
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: AppColors.border),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.account_balance_wallet_outlined,
+            color: AppColors.gold, size: 18),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            _isSelectingPaymentAccount
+                ? 'جاري تحميل الحسابات...'
+                : 'حساب الاستلام: ${_selectedPaymentAccount?.displayLabel ?? 'غير محدد'}',
+            style: const TextStyle(color: AppColors.textPrimary),
+          ),
+        ),
+        TextButton(
+          onPressed: _isSelectingPaymentAccount
+              ? null
+              : () => unawaited(
+                    _selectDigitalPaymentAccount(paymentMethod),
+                  ),
+          child: const Text('تغيير'),
+        ),
+      ],
+    ),
+  ),
+],
 if (paymentMethod ==
 PaymentMethod.cash) ...[
 const SizedBox(height: 10),
@@ -828,6 +967,10 @@ child: ElevatedButton.icon(
 onPressed: state.cartItems.isEmpty ||
 state.status ==
 CartStatus.loading ||
+_isSelectingPaymentAccount ||
+((paymentMethod == PaymentMethod.wallet ||
+        paymentMethod == PaymentMethod.visa) &&
+    _selectedPaymentAccount == null) ||
 paymentMethod ==
 PaymentMethod.credit
 ? null
