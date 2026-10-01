@@ -47,7 +47,6 @@ State<_PosView> createState() => _PosViewState();
 
 class _PosViewState extends State<_PosView> {
 final searchController = TextEditingController();
-final searchFocusNode = FocusNode();
 final discountController = TextEditingController(text: '0');
 final receivedController = TextEditingController(text: '0');
 
@@ -93,20 +92,8 @@ super.initState();
 
 _paymentAccountRepository = PaymentAccountRepository(getIt<AppDatabase>());
 _barcodeFocusNode = FocusNode();
-_barcodeFocusNode.addListener(_handleBarcodeFocus);
 
 _requestBarcodeFocus();
-}
-
-void _handleBarcodeFocus() {
-if (!mounted) return;
-
-if (!_barcodeFocusNode.hasFocus) {
-WidgetsBinding.instance.addPostFrameCallback((_) {
-if (!mounted) return;
-_barcodeFocusNode.requestFocus();
-});
-}
 }
 
 void _requestBarcodeFocus() {
@@ -121,8 +108,6 @@ void dispose() {
 _searchDebounce?.cancel();
 
 searchController.dispose();
-searchFocusNode.dispose();
-_barcodeFocusNode.removeListener(_handleBarcodeFocus);
 _barcodeFocusNode.dispose();
 
 discountController.dispose();
@@ -419,7 +404,9 @@ isError ? AppColors.danger : AppColors.success,
 
 @override
 Widget build(BuildContext context) {
-return Directionality(
+return PosSearchFocusGuard(
+searchFocusNode: _barcodeFocusNode,
+child: Directionality(
 textDirection: TextDirection.rtl,
 child: Scaffold(
 backgroundColor: AppColors.background,
@@ -451,8 +438,6 @@ _showMessage(
 state.errorMessage!,
 isError: true,
 );
-
-_requestBarcodeFocus();
 }
 },
 builder: (context, state) {
@@ -535,6 +520,7 @@ child: productsPanel,
 },
 );
 },
+),
 ),
 ),
 ),
