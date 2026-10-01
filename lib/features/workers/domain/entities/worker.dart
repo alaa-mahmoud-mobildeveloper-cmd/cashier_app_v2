@@ -1,5 +1,7 @@
 enum WorkerStatus { active, inactive }
+
 class Worker {
+  final int? id;
   final String name;
   final String phone;
   final String role;
@@ -8,6 +10,7 @@ class Worker {
   WorkerStatus status;
 
   Worker({
+    this.id,
     required this.name,
     required this.phone,
     required this.role,

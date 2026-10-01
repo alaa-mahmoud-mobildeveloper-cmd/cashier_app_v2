@@ -1,10 +1,12 @@
+import 'package:cashier_app_v2/core/database/app_database.dart';
+import 'package:cashier_app_v2/features/workers/data/repositories/worker_repository.dart';
 import 'package:cashier_app_v2/features/workers/presentation/screen/worker_details_screen.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../di.dart';
 import '../../domain/entities/worker.dart';
 import '../widgets/add_worker_dialog.dart';
-
 import '../widgets/worker_row.dart';
 import '../widgets/worker_summary_card.dart';
 import '../widgets/workers_header.dart';
@@ -18,19 +20,16 @@ class WorkersScreen extends StatefulWidget {
 
 class _WorkersScreenState extends State<WorkersScreen> {
   final TextEditingController _searchController = TextEditingController();
+  late final WorkerRepository _repository;
+  late final Stream<List<Worker>> _workersStream;
   String _currentFilter = 'الكل';
 
-  final List<Worker> _workers = [
-    Worker(name: 'أحمد محمد', phone: '01012345678', role: 'كاشير', salary: 4500),
-    Worker(name: 'محمد علي', phone: '01098765432', role: 'مدير مخزن', salary: 6000),
-    Worker(
-      name: 'سارة حسن',
-      phone: '01123456789',
-      role: 'كاشير',
-      salary: 4200,
-      status: WorkerStatus.inactive,
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _repository = WorkerRepository(getIt<AppDatabase>());
+    _workersStream = _repository.watchWorkers();
+  }
 
   @override
   void dispose() {
@@ -38,18 +37,19 @@ class _WorkersScreenState extends State<WorkersScreen> {
     super.dispose();
   }
 
-  List<Worker> get _filteredWorkers {
+  List<Worker> _filteredWorkers(List<Worker> workers) {
     final query = _searchController.text.trim().toLowerCase();
-    return _workers.where((worker) {
-      final queryMatch = query.isEmpty ||
+    return workers.where((worker) {
+      final queryMatch =
+          query.isEmpty ||
           worker.name.toLowerCase().contains(query) ||
           worker.phone.contains(query) ||
           worker.role.toLowerCase().contains(query);
-
-      final filterMatch = _currentFilter == 'الكل' ||
+      final filterMatch =
+          _currentFilter == 'الكل' ||
           (_currentFilter == 'نشط' && worker.status == WorkerStatus.active) ||
-          (_currentFilter == 'غير نشط' && worker.status == WorkerStatus.inactive);
-
+          (_currentFilter == 'غير نشط' &&
+              worker.status == WorkerStatus.inactive);
       return queryMatch && filterMatch;
     }).toList();
   }
@@ -59,9 +59,20 @@ class _WorkersScreenState extends State<WorkersScreen> {
       context: context,
       builder: (_) => const AddWorkerDialog(),
     );
-    if (worker != null && mounted) {
-      setState(() => _workers.add(worker));
+    if (worker == null || !mounted) return;
+
+    try {
+      await _repository.addWorker(worker);
+      if (mounted) _showMessage('تم حفظ العامل');
+    } catch (error) {
+      if (mounted) _showMessage('تعذر حفظ العامل: $error');
     }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -71,26 +82,41 @@ class _WorkersScreenState extends State<WorkersScreen> {
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: SafeArea(
-          child: LayoutBuilder(
-            builder: (_, constraints) {
-              final isCompact = constraints.maxWidth < 800;
-              return SingleChildScrollView(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isCompact ? 12 : 28,
-                  vertical: 24,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    WorkersHeader(onAdd: _addWorker),
-                    const SizedBox(height: 16),
-                    _buildSummarySection(isCompact),
-                    const SizedBox(height: 16),
-                    _buildFiltersSection(isCompact),
-                    const SizedBox(height: 16),
-                    _buildWorkersList(),
-                  ],
-                ),
+          child: StreamBuilder<List<Worker>>(
+            stream: _workersStream,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text('تعذر تحميل العمال: ${snapshot.error}'),
+                );
+              }
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final workers = snapshot.data!;
+              return LayoutBuilder(
+                builder: (_, constraints) {
+                  final isCompact = constraints.maxWidth < 800;
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isCompact ? 12 : 28,
+                      vertical: 24,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        WorkersHeader(onAdd: _addWorker),
+                        const SizedBox(height: 16),
+                        _buildSummarySection(workers, isCompact),
+                        const SizedBox(height: 16),
+                        _buildFiltersSection(),
+                        const SizedBox(height: 16),
+                        _buildWorkersList(_filteredWorkers(workers)),
+                      ],
+                    ),
+                  );
+                },
               );
             },
           ),
@@ -99,9 +125,11 @@ class _WorkersScreenState extends State<WorkersScreen> {
     );
   }
 
-  Widget _buildSummarySection(bool isCompact) {
-    final activeCount = _workers.where((w) => w.status == WorkerStatus.active).length;
-    final inactiveCount = _workers.length - activeCount;
+  Widget _buildSummarySection(List<Worker> workers, bool isCompact) {
+    final activeCount = workers
+        .where((w) => w.status == WorkerStatus.active)
+        .length;
+    final inactiveCount = workers.length - activeCount;
 
     return GridView.count(
       shrinkWrap: true,
@@ -113,7 +141,7 @@ class _WorkersScreenState extends State<WorkersScreen> {
       children: [
         WorkerSummaryCard(
           title: 'إجمالي العمال',
-          value: '${_workers.length}',
+          value: '${workers.length}',
           color: AppColors.gold,
           icon: Icons.groups_outlined,
         ),
@@ -133,37 +161,36 @@ class _WorkersScreenState extends State<WorkersScreen> {
     );
   }
 
-  Widget _buildFiltersSection(bool isCompact) {
-    return Row(
+  Widget _buildFiltersSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          child: TextField(
-            controller: _searchController,
-            onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              hintText: 'ابحث باسم العامل أو الهاتف أو الوظيفة...',
-              prefixIcon: Icon(Icons.search),
-            ),
+        TextField(
+          controller: _searchController,
+          onChanged: (_) => setState(() {}),
+          decoration: const InputDecoration(
+            hintText: 'ابحث باسم العامل أو الهاتف أو الوظيفة...',
+            prefixIcon: Icon(Icons.search),
           ),
         ),
-        const SizedBox(width: 12),
-        ...['الكل', 'نشط', 'غير نشط'].map(
-              (value) => Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: ChoiceChip(
-              label: Text(value),
-              selected: _currentFilter == value,
-              onSelected: (_) => setState(() => _currentFilter = value),
-            ),
-          ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: ['الكل', 'نشط', 'غير نشط']
+              .map(
+                (value) => ChoiceChip(
+                  label: Text(value),
+                  selected: _currentFilter == value,
+                  onSelected: (_) => setState(() => _currentFilter = value),
+                ),
+              )
+              .toList(),
         ),
       ],
     );
   }
 
-  Widget _buildWorkersList() {
-    final filtered = _filteredWorkers;
-
+  Widget _buildWorkersList(List<Worker> filtered) {
     if (filtered.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 32),
@@ -185,33 +212,42 @@ class _WorkersScreenState extends State<WorkersScreen> {
         final worker = filtered[index];
         return WorkerRow(
           worker: worker,
-          onToggle: () => setState(() {
-            worker.status = worker.status == WorkerStatus.active
-                ? WorkerStatus.inactive
-                : WorkerStatus.active;
-          }),
+          onToggle: () => _toggleWorker(worker),
           onView: () => _showWorkerDetails(worker),
-          onDelete: () => _deleteWorker(worker),
+          onDelete: () => _archiveWorker(worker),
         );
       },
     );
   }
 
+  Future<void> _toggleWorker(Worker worker) async {
+    final id = worker.id;
+    if (id == null) return;
+    try {
+      await _repository.setWorkerActive(
+        id,
+        worker.status != WorkerStatus.active,
+      );
+    } catch (error) {
+      if (mounted) _showMessage('تعذر تحديث حالة العامل: $error');
+    }
+  }
+
   Future<void> _showWorkerDetails(Worker worker) {
     return Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => WorkerDetailsScreen(worker: worker),
-      ),
+      MaterialPageRoute(builder: (_) => WorkerDetailsScreen(worker: worker)),
     );
   }
 
-  Future<void> _deleteWorker(Worker worker) async {
+  Future<void> _archiveWorker(Worker worker) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('حذف العامل'),
-        content: Text('هل تريد حذف ${worker.name}؟'),
+        title: const Text('إخفاء العامل'),
+        content: Text(
+          'سيتم إخفاء ${worker.name} من قائمة العمال مع الاحتفاظ بالسلف وسجل الأصناف.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -219,14 +255,17 @@ class _WorkersScreenState extends State<WorkersScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('حذف'),
+            child: const Text('إخفاء'),
           ),
         ],
       ),
     );
 
-    if (confirmed == true && mounted) {
-      setState(() => _workers.remove(worker));
+    if (confirmed != true || worker.id == null) return;
+    try {
+      await _repository.archiveWorker(worker.id!);
+    } catch (error) {
+      if (mounted) _showMessage('تعذر إخفاء العامل: $error');
     }
   }
 }

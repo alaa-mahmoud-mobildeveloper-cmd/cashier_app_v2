@@ -63,6 +63,63 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
+  @override
+  late final GeneratedColumn<String> phone = GeneratedColumn<String>(
+    'phone',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _jobTitleMeta = const VerificationMeta(
+    'jobTitle',
+  );
+  @override
+  late final GeneratedColumn<String> jobTitle = GeneratedColumn<String>(
+    'job_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _salaryMeta = const VerificationMeta('salary');
+  @override
+  late final GeneratedColumn<double> salary = GeneratedColumn<double>(
+    'salary',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _barcodeMeta = const VerificationMeta(
+    'barcode',
+  );
+  @override
+  late final GeneratedColumn<String> barcode = GeneratedColumn<String>(
+    'barcode',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isWorkerMeta = const VerificationMeta(
+    'isWorker',
+  );
+  @override
+  late final GeneratedColumn<bool> isWorker = GeneratedColumn<bool>(
+    'is_worker',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_worker" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _roleMeta = const VerificationMeta('role');
   @override
   late final GeneratedColumn<String> role = GeneratedColumn<String>(
@@ -153,6 +210,11 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
     username,
     passwordHash,
     fullName,
+    phone,
+    jobTitle,
+    salary,
+    barcode,
+    isWorker,
     role,
     image,
     isActive,
@@ -202,6 +264,36 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
       );
     } else if (isInserting) {
       context.missing(_fullNameMeta);
+    }
+    if (data.containsKey('phone')) {
+      context.handle(
+        _phoneMeta,
+        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+      );
+    }
+    if (data.containsKey('job_title')) {
+      context.handle(
+        _jobTitleMeta,
+        jobTitle.isAcceptableOrUnknown(data['job_title']!, _jobTitleMeta),
+      );
+    }
+    if (data.containsKey('salary')) {
+      context.handle(
+        _salaryMeta,
+        salary.isAcceptableOrUnknown(data['salary']!, _salaryMeta),
+      );
+    }
+    if (data.containsKey('barcode')) {
+      context.handle(
+        _barcodeMeta,
+        barcode.isAcceptableOrUnknown(data['barcode']!, _barcodeMeta),
+      );
+    }
+    if (data.containsKey('is_worker')) {
+      context.handle(
+        _isWorkerMeta,
+        isWorker.isAcceptableOrUnknown(data['is_worker']!, _isWorkerMeta),
+      );
     }
     if (data.containsKey('role')) {
       context.handle(
@@ -273,6 +365,26 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
         DriftSqlType.string,
         data['${effectivePrefix}full_name'],
       )!,
+      phone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phone'],
+      ),
+      jobTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}job_title'],
+      )!,
+      salary: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}salary'],
+      )!,
+      barcode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}barcode'],
+      ),
+      isWorker: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_worker'],
+      )!,
       role: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}role'],
@@ -323,6 +435,13 @@ class User extends DataClass implements Insertable<User> {
   /// الاسم الكامل
   final String fullName;
 
+  /// Worker-specific profile fields. Non-worker accounts keep the defaults.
+  final String? phone;
+  final String jobTitle;
+  final double salary;
+  final String? barcode;
+  final bool isWorker;
+
   /// الدور
   /// admin - manager - cashier
   final String role;
@@ -343,6 +462,11 @@ class User extends DataClass implements Insertable<User> {
     required this.username,
     required this.passwordHash,
     required this.fullName,
+    this.phone,
+    required this.jobTitle,
+    required this.salary,
+    this.barcode,
+    required this.isWorker,
     required this.role,
     this.image,
     required this.isActive,
@@ -358,6 +482,15 @@ class User extends DataClass implements Insertable<User> {
     map['username'] = Variable<String>(username);
     map['password_hash'] = Variable<String>(passwordHash);
     map['full_name'] = Variable<String>(fullName);
+    if (!nullToAbsent || phone != null) {
+      map['phone'] = Variable<String>(phone);
+    }
+    map['job_title'] = Variable<String>(jobTitle);
+    map['salary'] = Variable<double>(salary);
+    if (!nullToAbsent || barcode != null) {
+      map['barcode'] = Variable<String>(barcode);
+    }
+    map['is_worker'] = Variable<bool>(isWorker);
     map['role'] = Variable<String>(role);
     if (!nullToAbsent || image != null) {
       map['image'] = Variable<String>(image);
@@ -378,6 +511,15 @@ class User extends DataClass implements Insertable<User> {
       username: Value(username),
       passwordHash: Value(passwordHash),
       fullName: Value(fullName),
+      phone: phone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(phone),
+      jobTitle: Value(jobTitle),
+      salary: Value(salary),
+      barcode: barcode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(barcode),
+      isWorker: Value(isWorker),
       role: Value(role),
       image: image == null && nullToAbsent
           ? const Value.absent()
@@ -402,6 +544,11 @@ class User extends DataClass implements Insertable<User> {
       username: serializer.fromJson<String>(json['username']),
       passwordHash: serializer.fromJson<String>(json['passwordHash']),
       fullName: serializer.fromJson<String>(json['fullName']),
+      phone: serializer.fromJson<String?>(json['phone']),
+      jobTitle: serializer.fromJson<String>(json['jobTitle']),
+      salary: serializer.fromJson<double>(json['salary']),
+      barcode: serializer.fromJson<String?>(json['barcode']),
+      isWorker: serializer.fromJson<bool>(json['isWorker']),
       role: serializer.fromJson<String>(json['role']),
       image: serializer.fromJson<String?>(json['image']),
       isActive: serializer.fromJson<bool>(json['isActive']),
@@ -419,6 +566,11 @@ class User extends DataClass implements Insertable<User> {
       'username': serializer.toJson<String>(username),
       'passwordHash': serializer.toJson<String>(passwordHash),
       'fullName': serializer.toJson<String>(fullName),
+      'phone': serializer.toJson<String?>(phone),
+      'jobTitle': serializer.toJson<String>(jobTitle),
+      'salary': serializer.toJson<double>(salary),
+      'barcode': serializer.toJson<String?>(barcode),
+      'isWorker': serializer.toJson<bool>(isWorker),
       'role': serializer.toJson<String>(role),
       'image': serializer.toJson<String?>(image),
       'isActive': serializer.toJson<bool>(isActive),
@@ -434,6 +586,11 @@ class User extends DataClass implements Insertable<User> {
     String? username,
     String? passwordHash,
     String? fullName,
+    Value<String?> phone = const Value.absent(),
+    String? jobTitle,
+    double? salary,
+    Value<String?> barcode = const Value.absent(),
+    bool? isWorker,
     String? role,
     Value<String?> image = const Value.absent(),
     bool? isActive,
@@ -446,6 +603,11 @@ class User extends DataClass implements Insertable<User> {
     username: username ?? this.username,
     passwordHash: passwordHash ?? this.passwordHash,
     fullName: fullName ?? this.fullName,
+    phone: phone.present ? phone.value : this.phone,
+    jobTitle: jobTitle ?? this.jobTitle,
+    salary: salary ?? this.salary,
+    barcode: barcode.present ? barcode.value : this.barcode,
+    isWorker: isWorker ?? this.isWorker,
     role: role ?? this.role,
     image: image.present ? image.value : this.image,
     isActive: isActive ?? this.isActive,
@@ -462,6 +624,11 @@ class User extends DataClass implements Insertable<User> {
           ? data.passwordHash.value
           : this.passwordHash,
       fullName: data.fullName.present ? data.fullName.value : this.fullName,
+      phone: data.phone.present ? data.phone.value : this.phone,
+      jobTitle: data.jobTitle.present ? data.jobTitle.value : this.jobTitle,
+      salary: data.salary.present ? data.salary.value : this.salary,
+      barcode: data.barcode.present ? data.barcode.value : this.barcode,
+      isWorker: data.isWorker.present ? data.isWorker.value : this.isWorker,
       role: data.role.present ? data.role.value : this.role,
       image: data.image.present ? data.image.value : this.image,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
@@ -481,6 +648,11 @@ class User extends DataClass implements Insertable<User> {
           ..write('username: $username, ')
           ..write('passwordHash: $passwordHash, ')
           ..write('fullName: $fullName, ')
+          ..write('phone: $phone, ')
+          ..write('jobTitle: $jobTitle, ')
+          ..write('salary: $salary, ')
+          ..write('barcode: $barcode, ')
+          ..write('isWorker: $isWorker, ')
           ..write('role: $role, ')
           ..write('image: $image, ')
           ..write('isActive: $isActive, ')
@@ -498,6 +670,11 @@ class User extends DataClass implements Insertable<User> {
     username,
     passwordHash,
     fullName,
+    phone,
+    jobTitle,
+    salary,
+    barcode,
+    isWorker,
     role,
     image,
     isActive,
@@ -514,6 +691,11 @@ class User extends DataClass implements Insertable<User> {
           other.username == this.username &&
           other.passwordHash == this.passwordHash &&
           other.fullName == this.fullName &&
+          other.phone == this.phone &&
+          other.jobTitle == this.jobTitle &&
+          other.salary == this.salary &&
+          other.barcode == this.barcode &&
+          other.isWorker == this.isWorker &&
           other.role == this.role &&
           other.image == this.image &&
           other.isActive == this.isActive &&
@@ -528,6 +710,11 @@ class UsersCompanion extends UpdateCompanion<User> {
   final Value<String> username;
   final Value<String> passwordHash;
   final Value<String> fullName;
+  final Value<String?> phone;
+  final Value<String> jobTitle;
+  final Value<double> salary;
+  final Value<String?> barcode;
+  final Value<bool> isWorker;
   final Value<String> role;
   final Value<String?> image;
   final Value<bool> isActive;
@@ -540,6 +727,11 @@ class UsersCompanion extends UpdateCompanion<User> {
     this.username = const Value.absent(),
     this.passwordHash = const Value.absent(),
     this.fullName = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.jobTitle = const Value.absent(),
+    this.salary = const Value.absent(),
+    this.barcode = const Value.absent(),
+    this.isWorker = const Value.absent(),
     this.role = const Value.absent(),
     this.image = const Value.absent(),
     this.isActive = const Value.absent(),
@@ -553,6 +745,11 @@ class UsersCompanion extends UpdateCompanion<User> {
     required String username,
     required String passwordHash,
     required String fullName,
+    this.phone = const Value.absent(),
+    this.jobTitle = const Value.absent(),
+    this.salary = const Value.absent(),
+    this.barcode = const Value.absent(),
+    this.isWorker = const Value.absent(),
     this.role = const Value.absent(),
     this.image = const Value.absent(),
     this.isActive = const Value.absent(),
@@ -568,6 +765,11 @@ class UsersCompanion extends UpdateCompanion<User> {
     Expression<String>? username,
     Expression<String>? passwordHash,
     Expression<String>? fullName,
+    Expression<String>? phone,
+    Expression<String>? jobTitle,
+    Expression<double>? salary,
+    Expression<String>? barcode,
+    Expression<bool>? isWorker,
     Expression<String>? role,
     Expression<String>? image,
     Expression<bool>? isActive,
@@ -581,6 +783,11 @@ class UsersCompanion extends UpdateCompanion<User> {
       if (username != null) 'username': username,
       if (passwordHash != null) 'password_hash': passwordHash,
       if (fullName != null) 'full_name': fullName,
+      if (phone != null) 'phone': phone,
+      if (jobTitle != null) 'job_title': jobTitle,
+      if (salary != null) 'salary': salary,
+      if (barcode != null) 'barcode': barcode,
+      if (isWorker != null) 'is_worker': isWorker,
       if (role != null) 'role': role,
       if (image != null) 'image': image,
       if (isActive != null) 'is_active': isActive,
@@ -596,6 +803,11 @@ class UsersCompanion extends UpdateCompanion<User> {
     Value<String>? username,
     Value<String>? passwordHash,
     Value<String>? fullName,
+    Value<String?>? phone,
+    Value<String>? jobTitle,
+    Value<double>? salary,
+    Value<String?>? barcode,
+    Value<bool>? isWorker,
     Value<String>? role,
     Value<String?>? image,
     Value<bool>? isActive,
@@ -609,6 +821,11 @@ class UsersCompanion extends UpdateCompanion<User> {
       username: username ?? this.username,
       passwordHash: passwordHash ?? this.passwordHash,
       fullName: fullName ?? this.fullName,
+      phone: phone ?? this.phone,
+      jobTitle: jobTitle ?? this.jobTitle,
+      salary: salary ?? this.salary,
+      barcode: barcode ?? this.barcode,
+      isWorker: isWorker ?? this.isWorker,
       role: role ?? this.role,
       image: image ?? this.image,
       isActive: isActive ?? this.isActive,
@@ -633,6 +850,21 @@ class UsersCompanion extends UpdateCompanion<User> {
     }
     if (fullName.present) {
       map['full_name'] = Variable<String>(fullName.value);
+    }
+    if (phone.present) {
+      map['phone'] = Variable<String>(phone.value);
+    }
+    if (jobTitle.present) {
+      map['job_title'] = Variable<String>(jobTitle.value);
+    }
+    if (salary.present) {
+      map['salary'] = Variable<double>(salary.value);
+    }
+    if (barcode.present) {
+      map['barcode'] = Variable<String>(barcode.value);
+    }
+    if (isWorker.present) {
+      map['is_worker'] = Variable<bool>(isWorker.value);
     }
     if (role.present) {
       map['role'] = Variable<String>(role.value);
@@ -665,6 +897,11 @@ class UsersCompanion extends UpdateCompanion<User> {
           ..write('username: $username, ')
           ..write('passwordHash: $passwordHash, ')
           ..write('fullName: $fullName, ')
+          ..write('phone: $phone, ')
+          ..write('jobTitle: $jobTitle, ')
+          ..write('salary: $salary, ')
+          ..write('barcode: $barcode, ')
+          ..write('isWorker: $isWorker, ')
           ..write('role: $role, ')
           ..write('image: $image, ')
           ..write('isActive: $isActive, ')
@@ -7356,6 +7593,867 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   }
 }
 
+class $WorkerAdvancesTable extends WorkerAdvances
+    with TableInfo<$WorkerAdvancesTable, WorkerAdvance> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WorkerAdvancesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _workerIdMeta = const VerificationMeta(
+    'workerId',
+  );
+  @override
+  late final GeneratedColumn<int> workerId = GeneratedColumn<int>(
+    'worker_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES users (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
+    'amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  @override
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    workerId,
+    amount,
+    reason,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'worker_advances';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WorkerAdvance> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('worker_id')) {
+      context.handle(
+        _workerIdMeta,
+        workerId.isAcceptableOrUnknown(data['worker_id']!, _workerIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_workerIdMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(
+        _amountMeta,
+        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('reason')) {
+      context.handle(
+        _reasonMeta,
+        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  WorkerAdvance map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WorkerAdvance(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      workerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}worker_id'],
+      )!,
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}amount'],
+      )!,
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $WorkerAdvancesTable createAlias(String alias) {
+    return $WorkerAdvancesTable(attachedDatabase, alias);
+  }
+}
+
+class WorkerAdvance extends DataClass implements Insertable<WorkerAdvance> {
+  final int id;
+  final int workerId;
+  final double amount;
+  final String? reason;
+  final DateTime createdAt;
+  const WorkerAdvance({
+    required this.id,
+    required this.workerId,
+    required this.amount,
+    this.reason,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['worker_id'] = Variable<int>(workerId);
+    map['amount'] = Variable<double>(amount);
+    if (!nullToAbsent || reason != null) {
+      map['reason'] = Variable<String>(reason);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  WorkerAdvancesCompanion toCompanion(bool nullToAbsent) {
+    return WorkerAdvancesCompanion(
+      id: Value(id),
+      workerId: Value(workerId),
+      amount: Value(amount),
+      reason: reason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reason),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory WorkerAdvance.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WorkerAdvance(
+      id: serializer.fromJson<int>(json['id']),
+      workerId: serializer.fromJson<int>(json['workerId']),
+      amount: serializer.fromJson<double>(json['amount']),
+      reason: serializer.fromJson<String?>(json['reason']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'workerId': serializer.toJson<int>(workerId),
+      'amount': serializer.toJson<double>(amount),
+      'reason': serializer.toJson<String?>(reason),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  WorkerAdvance copyWith({
+    int? id,
+    int? workerId,
+    double? amount,
+    Value<String?> reason = const Value.absent(),
+    DateTime? createdAt,
+  }) => WorkerAdvance(
+    id: id ?? this.id,
+    workerId: workerId ?? this.workerId,
+    amount: amount ?? this.amount,
+    reason: reason.present ? reason.value : this.reason,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  WorkerAdvance copyWithCompanion(WorkerAdvancesCompanion data) {
+    return WorkerAdvance(
+      id: data.id.present ? data.id.value : this.id,
+      workerId: data.workerId.present ? data.workerId.value : this.workerId,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WorkerAdvance(')
+          ..write('id: $id, ')
+          ..write('workerId: $workerId, ')
+          ..write('amount: $amount, ')
+          ..write('reason: $reason, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, workerId, amount, reason, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WorkerAdvance &&
+          other.id == this.id &&
+          other.workerId == this.workerId &&
+          other.amount == this.amount &&
+          other.reason == this.reason &&
+          other.createdAt == this.createdAt);
+}
+
+class WorkerAdvancesCompanion extends UpdateCompanion<WorkerAdvance> {
+  final Value<int> id;
+  final Value<int> workerId;
+  final Value<double> amount;
+  final Value<String?> reason;
+  final Value<DateTime> createdAt;
+  const WorkerAdvancesCompanion({
+    this.id = const Value.absent(),
+    this.workerId = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  WorkerAdvancesCompanion.insert({
+    this.id = const Value.absent(),
+    required int workerId,
+    required double amount,
+    this.reason = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : workerId = Value(workerId),
+       amount = Value(amount);
+  static Insertable<WorkerAdvance> custom({
+    Expression<int>? id,
+    Expression<int>? workerId,
+    Expression<double>? amount,
+    Expression<String>? reason,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (workerId != null) 'worker_id': workerId,
+      if (amount != null) 'amount': amount,
+      if (reason != null) 'reason': reason,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  WorkerAdvancesCompanion copyWith({
+    Value<int>? id,
+    Value<int>? workerId,
+    Value<double>? amount,
+    Value<String?>? reason,
+    Value<DateTime>? createdAt,
+  }) {
+    return WorkerAdvancesCompanion(
+      id: id ?? this.id,
+      workerId: workerId ?? this.workerId,
+      amount: amount ?? this.amount,
+      reason: reason ?? this.reason,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (workerId.present) {
+      map['worker_id'] = Variable<int>(workerId.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<double>(amount.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WorkerAdvancesCompanion(')
+          ..write('id: $id, ')
+          ..write('workerId: $workerId, ')
+          ..write('amount: $amount, ')
+          ..write('reason: $reason, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $WorkerProductIssuesTable extends WorkerProductIssues
+    with TableInfo<$WorkerProductIssuesTable, WorkerProductIssue> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WorkerProductIssuesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _workerIdMeta = const VerificationMeta(
+    'workerId',
+  );
+  @override
+  late final GeneratedColumn<int> workerId = GeneratedColumn<int>(
+    'worker_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES users (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _productIdMeta = const VerificationMeta(
+    'productId',
+  );
+  @override
+  late final GeneratedColumn<int> productId = GeneratedColumn<int>(
+    'product_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _productNameMeta = const VerificationMeta(
+    'productName',
+  );
+  @override
+  late final GeneratedColumn<String> productName = GeneratedColumn<String>(
+    'product_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _barcodeMeta = const VerificationMeta(
+    'barcode',
+  );
+  @override
+  late final GeneratedColumn<String> barcode = GeneratedColumn<String>(
+    'barcode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _quantityMeta = const VerificationMeta(
+    'quantity',
+  );
+  @override
+  late final GeneratedColumn<int> quantity = GeneratedColumn<int>(
+    'quantity',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _unitPriceMeta = const VerificationMeta(
+    'unitPrice',
+  );
+  @override
+  late final GeneratedColumn<double> unitPrice = GeneratedColumn<double>(
+    'unit_price',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    workerId,
+    productId,
+    productName,
+    barcode,
+    quantity,
+    unitPrice,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'worker_product_issues';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WorkerProductIssue> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('worker_id')) {
+      context.handle(
+        _workerIdMeta,
+        workerId.isAcceptableOrUnknown(data['worker_id']!, _workerIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_workerIdMeta);
+    }
+    if (data.containsKey('product_id')) {
+      context.handle(
+        _productIdMeta,
+        productId.isAcceptableOrUnknown(data['product_id']!, _productIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_productIdMeta);
+    }
+    if (data.containsKey('product_name')) {
+      context.handle(
+        _productNameMeta,
+        productName.isAcceptableOrUnknown(
+          data['product_name']!,
+          _productNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_productNameMeta);
+    }
+    if (data.containsKey('barcode')) {
+      context.handle(
+        _barcodeMeta,
+        barcode.isAcceptableOrUnknown(data['barcode']!, _barcodeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_barcodeMeta);
+    }
+    if (data.containsKey('quantity')) {
+      context.handle(
+        _quantityMeta,
+        quantity.isAcceptableOrUnknown(data['quantity']!, _quantityMeta),
+      );
+    }
+    if (data.containsKey('unit_price')) {
+      context.handle(
+        _unitPriceMeta,
+        unitPrice.isAcceptableOrUnknown(data['unit_price']!, _unitPriceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_unitPriceMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  WorkerProductIssue map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WorkerProductIssue(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      workerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}worker_id'],
+      )!,
+      productId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}product_id'],
+      )!,
+      productName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}product_name'],
+      )!,
+      barcode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}barcode'],
+      )!,
+      quantity: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quantity'],
+      )!,
+      unitPrice: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}unit_price'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $WorkerProductIssuesTable createAlias(String alias) {
+    return $WorkerProductIssuesTable(attachedDatabase, alias);
+  }
+}
+
+class WorkerProductIssue extends DataClass
+    implements Insertable<WorkerProductIssue> {
+  final int id;
+  final int workerId;
+
+  /// Product identity snapshot: history remains readable if the catalog item changes.
+  final int productId;
+  final String productName;
+  final String barcode;
+  final int quantity;
+
+  /// Selling price captured when the product was issued.
+  final double unitPrice;
+  final DateTime createdAt;
+  const WorkerProductIssue({
+    required this.id,
+    required this.workerId,
+    required this.productId,
+    required this.productName,
+    required this.barcode,
+    required this.quantity,
+    required this.unitPrice,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['worker_id'] = Variable<int>(workerId);
+    map['product_id'] = Variable<int>(productId);
+    map['product_name'] = Variable<String>(productName);
+    map['barcode'] = Variable<String>(barcode);
+    map['quantity'] = Variable<int>(quantity);
+    map['unit_price'] = Variable<double>(unitPrice);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  WorkerProductIssuesCompanion toCompanion(bool nullToAbsent) {
+    return WorkerProductIssuesCompanion(
+      id: Value(id),
+      workerId: Value(workerId),
+      productId: Value(productId),
+      productName: Value(productName),
+      barcode: Value(barcode),
+      quantity: Value(quantity),
+      unitPrice: Value(unitPrice),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory WorkerProductIssue.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WorkerProductIssue(
+      id: serializer.fromJson<int>(json['id']),
+      workerId: serializer.fromJson<int>(json['workerId']),
+      productId: serializer.fromJson<int>(json['productId']),
+      productName: serializer.fromJson<String>(json['productName']),
+      barcode: serializer.fromJson<String>(json['barcode']),
+      quantity: serializer.fromJson<int>(json['quantity']),
+      unitPrice: serializer.fromJson<double>(json['unitPrice']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'workerId': serializer.toJson<int>(workerId),
+      'productId': serializer.toJson<int>(productId),
+      'productName': serializer.toJson<String>(productName),
+      'barcode': serializer.toJson<String>(barcode),
+      'quantity': serializer.toJson<int>(quantity),
+      'unitPrice': serializer.toJson<double>(unitPrice),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  WorkerProductIssue copyWith({
+    int? id,
+    int? workerId,
+    int? productId,
+    String? productName,
+    String? barcode,
+    int? quantity,
+    double? unitPrice,
+    DateTime? createdAt,
+  }) => WorkerProductIssue(
+    id: id ?? this.id,
+    workerId: workerId ?? this.workerId,
+    productId: productId ?? this.productId,
+    productName: productName ?? this.productName,
+    barcode: barcode ?? this.barcode,
+    quantity: quantity ?? this.quantity,
+    unitPrice: unitPrice ?? this.unitPrice,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  WorkerProductIssue copyWithCompanion(WorkerProductIssuesCompanion data) {
+    return WorkerProductIssue(
+      id: data.id.present ? data.id.value : this.id,
+      workerId: data.workerId.present ? data.workerId.value : this.workerId,
+      productId: data.productId.present ? data.productId.value : this.productId,
+      productName: data.productName.present
+          ? data.productName.value
+          : this.productName,
+      barcode: data.barcode.present ? data.barcode.value : this.barcode,
+      quantity: data.quantity.present ? data.quantity.value : this.quantity,
+      unitPrice: data.unitPrice.present ? data.unitPrice.value : this.unitPrice,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WorkerProductIssue(')
+          ..write('id: $id, ')
+          ..write('workerId: $workerId, ')
+          ..write('productId: $productId, ')
+          ..write('productName: $productName, ')
+          ..write('barcode: $barcode, ')
+          ..write('quantity: $quantity, ')
+          ..write('unitPrice: $unitPrice, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    workerId,
+    productId,
+    productName,
+    barcode,
+    quantity,
+    unitPrice,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WorkerProductIssue &&
+          other.id == this.id &&
+          other.workerId == this.workerId &&
+          other.productId == this.productId &&
+          other.productName == this.productName &&
+          other.barcode == this.barcode &&
+          other.quantity == this.quantity &&
+          other.unitPrice == this.unitPrice &&
+          other.createdAt == this.createdAt);
+}
+
+class WorkerProductIssuesCompanion extends UpdateCompanion<WorkerProductIssue> {
+  final Value<int> id;
+  final Value<int> workerId;
+  final Value<int> productId;
+  final Value<String> productName;
+  final Value<String> barcode;
+  final Value<int> quantity;
+  final Value<double> unitPrice;
+  final Value<DateTime> createdAt;
+  const WorkerProductIssuesCompanion({
+    this.id = const Value.absent(),
+    this.workerId = const Value.absent(),
+    this.productId = const Value.absent(),
+    this.productName = const Value.absent(),
+    this.barcode = const Value.absent(),
+    this.quantity = const Value.absent(),
+    this.unitPrice = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  WorkerProductIssuesCompanion.insert({
+    this.id = const Value.absent(),
+    required int workerId,
+    required int productId,
+    required String productName,
+    required String barcode,
+    this.quantity = const Value.absent(),
+    required double unitPrice,
+    this.createdAt = const Value.absent(),
+  }) : workerId = Value(workerId),
+       productId = Value(productId),
+       productName = Value(productName),
+       barcode = Value(barcode),
+       unitPrice = Value(unitPrice);
+  static Insertable<WorkerProductIssue> custom({
+    Expression<int>? id,
+    Expression<int>? workerId,
+    Expression<int>? productId,
+    Expression<String>? productName,
+    Expression<String>? barcode,
+    Expression<int>? quantity,
+    Expression<double>? unitPrice,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (workerId != null) 'worker_id': workerId,
+      if (productId != null) 'product_id': productId,
+      if (productName != null) 'product_name': productName,
+      if (barcode != null) 'barcode': barcode,
+      if (quantity != null) 'quantity': quantity,
+      if (unitPrice != null) 'unit_price': unitPrice,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  WorkerProductIssuesCompanion copyWith({
+    Value<int>? id,
+    Value<int>? workerId,
+    Value<int>? productId,
+    Value<String>? productName,
+    Value<String>? barcode,
+    Value<int>? quantity,
+    Value<double>? unitPrice,
+    Value<DateTime>? createdAt,
+  }) {
+    return WorkerProductIssuesCompanion(
+      id: id ?? this.id,
+      workerId: workerId ?? this.workerId,
+      productId: productId ?? this.productId,
+      productName: productName ?? this.productName,
+      barcode: barcode ?? this.barcode,
+      quantity: quantity ?? this.quantity,
+      unitPrice: unitPrice ?? this.unitPrice,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (workerId.present) {
+      map['worker_id'] = Variable<int>(workerId.value);
+    }
+    if (productId.present) {
+      map['product_id'] = Variable<int>(productId.value);
+    }
+    if (productName.present) {
+      map['product_name'] = Variable<String>(productName.value);
+    }
+    if (barcode.present) {
+      map['barcode'] = Variable<String>(barcode.value);
+    }
+    if (quantity.present) {
+      map['quantity'] = Variable<int>(quantity.value);
+    }
+    if (unitPrice.present) {
+      map['unit_price'] = Variable<double>(unitPrice.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WorkerProductIssuesCompanion(')
+          ..write('id: $id, ')
+          ..write('workerId: $workerId, ')
+          ..write('productId: $productId, ')
+          ..write('productName: $productName, ')
+          ..write('barcode: $barcode, ')
+          ..write('quantity: $quantity, ')
+          ..write('unitPrice: $unitPrice, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -7374,6 +8472,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ExpensesTable expenses = $ExpensesTable(this);
   late final $DailyClosingsTable dailyClosings = $DailyClosingsTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
+  late final $WorkerAdvancesTable workerAdvances = $WorkerAdvancesTable(this);
+  late final $WorkerProductIssuesTable workerProductIssues =
+      $WorkerProductIssuesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7392,6 +8493,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     expenses,
     dailyClosings,
     appSettings,
+    workerAdvances,
+    workerProductIssues,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -7402,6 +8505,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       ),
       result: [TableUpdate('invoice_items', kind: UpdateKind.delete)],
     ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'users',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('worker_advances', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'users',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('worker_product_issues', kind: UpdateKind.delete)],
+    ),
   ]);
 }
 
@@ -7411,6 +8528,11 @@ typedef $$UsersTableCreateCompanionBuilder =
       required String username,
       required String passwordHash,
       required String fullName,
+      Value<String?> phone,
+      Value<String> jobTitle,
+      Value<double> salary,
+      Value<String?> barcode,
+      Value<bool> isWorker,
       Value<String> role,
       Value<String?> image,
       Value<bool> isActive,
@@ -7425,6 +8547,11 @@ typedef $$UsersTableUpdateCompanionBuilder =
       Value<String> username,
       Value<String> passwordHash,
       Value<String> fullName,
+      Value<String?> phone,
+      Value<String> jobTitle,
+      Value<double> salary,
+      Value<String?> barcode,
+      Value<bool> isWorker,
       Value<String> role,
       Value<String?> image,
       Value<bool> isActive,
@@ -7474,6 +8601,51 @@ final class $$UsersTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$WorkerAdvancesTable, List<WorkerAdvance>>
+  _workerAdvancesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.workerAdvances,
+    aliasName: $_aliasNameGenerator(db.users.id, db.workerAdvances.workerId),
+  );
+
+  $$WorkerAdvancesTableProcessedTableManager get workerAdvancesRefs {
+    final manager = $$WorkerAdvancesTableTableManager(
+      $_db,
+      $_db.workerAdvances,
+    ).filter((f) => f.workerId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_workerAdvancesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $WorkerProductIssuesTable,
+    List<WorkerProductIssue>
+  >
+  _workerProductIssuesRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.workerProductIssues,
+        aliasName: $_aliasNameGenerator(
+          db.users.id,
+          db.workerProductIssues.workerId,
+        ),
+      );
+
+  $$WorkerProductIssuesTableProcessedTableManager get workerProductIssuesRefs {
+    final manager = $$WorkerProductIssuesTableTableManager(
+      $_db,
+      $_db.workerProductIssues,
+    ).filter((f) => f.workerId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _workerProductIssuesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
@@ -7501,6 +8673,31 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
 
   ColumnFilters<String> get fullName => $composableBuilder(
     column: $table.fullName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get jobTitle => $composableBuilder(
+    column: $table.jobTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get salary => $composableBuilder(
+    column: $table.salary,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get barcode => $composableBuilder(
+    column: $table.barcode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isWorker => $composableBuilder(
+    column: $table.isWorker,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7588,6 +8785,56 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
     );
     return f(composer);
   }
+
+  Expression<bool> workerAdvancesRefs(
+    Expression<bool> Function($$WorkerAdvancesTableFilterComposer f) f,
+  ) {
+    final $$WorkerAdvancesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.workerAdvances,
+      getReferencedColumn: (t) => t.workerId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WorkerAdvancesTableFilterComposer(
+            $db: $db,
+            $table: $db.workerAdvances,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> workerProductIssuesRefs(
+    Expression<bool> Function($$WorkerProductIssuesTableFilterComposer f) f,
+  ) {
+    final $$WorkerProductIssuesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.workerProductIssues,
+      getReferencedColumn: (t) => t.workerId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WorkerProductIssuesTableFilterComposer(
+            $db: $db,
+            $table: $db.workerProductIssues,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$UsersTableOrderingComposer
@@ -7616,6 +8863,31 @@ class $$UsersTableOrderingComposer
 
   ColumnOrderings<String> get fullName => $composableBuilder(
     column: $table.fullName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get jobTitle => $composableBuilder(
+    column: $table.jobTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get salary => $composableBuilder(
+    column: $table.salary,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get barcode => $composableBuilder(
+    column: $table.barcode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isWorker => $composableBuilder(
+    column: $table.isWorker,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -7677,6 +8949,21 @@ class $$UsersTableAnnotationComposer
 
   GeneratedColumn<String> get fullName =>
       $composableBuilder(column: $table.fullName, builder: (column) => column);
+
+  GeneratedColumn<String> get phone =>
+      $composableBuilder(column: $table.phone, builder: (column) => column);
+
+  GeneratedColumn<String> get jobTitle =>
+      $composableBuilder(column: $table.jobTitle, builder: (column) => column);
+
+  GeneratedColumn<double> get salary =>
+      $composableBuilder(column: $table.salary, builder: (column) => column);
+
+  GeneratedColumn<String> get barcode =>
+      $composableBuilder(column: $table.barcode, builder: (column) => column);
+
+  GeneratedColumn<bool> get isWorker =>
+      $composableBuilder(column: $table.isWorker, builder: (column) => column);
 
   GeneratedColumn<String> get role =>
       $composableBuilder(column: $table.role, builder: (column) => column);
@@ -7750,6 +9037,57 @@ class $$UsersTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> workerAdvancesRefs<T extends Object>(
+    Expression<T> Function($$WorkerAdvancesTableAnnotationComposer a) f,
+  ) {
+    final $$WorkerAdvancesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.workerAdvances,
+      getReferencedColumn: (t) => t.workerId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WorkerAdvancesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.workerAdvances,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> workerProductIssuesRefs<T extends Object>(
+    Expression<T> Function($$WorkerProductIssuesTableAnnotationComposer a) f,
+  ) {
+    final $$WorkerProductIssuesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.workerProductIssues,
+          getReferencedColumn: (t) => t.workerId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$WorkerProductIssuesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.workerProductIssues,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$UsersTableTableManager
@@ -7765,7 +9103,12 @@ class $$UsersTableTableManager
           $$UsersTableUpdateCompanionBuilder,
           (User, $$UsersTableReferences),
           User,
-          PrefetchHooks Function({bool invoicesRefs, bool stockMovementsRefs})
+          PrefetchHooks Function({
+            bool invoicesRefs,
+            bool stockMovementsRefs,
+            bool workerAdvancesRefs,
+            bool workerProductIssuesRefs,
+          })
         > {
   $$UsersTableTableManager(_$AppDatabase db, $UsersTable table)
     : super(
@@ -7784,6 +9127,11 @@ class $$UsersTableTableManager
                 Value<String> username = const Value.absent(),
                 Value<String> passwordHash = const Value.absent(),
                 Value<String> fullName = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
+                Value<String> jobTitle = const Value.absent(),
+                Value<double> salary = const Value.absent(),
+                Value<String?> barcode = const Value.absent(),
+                Value<bool> isWorker = const Value.absent(),
                 Value<String> role = const Value.absent(),
                 Value<String?> image = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
@@ -7796,6 +9144,11 @@ class $$UsersTableTableManager
                 username: username,
                 passwordHash: passwordHash,
                 fullName: fullName,
+                phone: phone,
+                jobTitle: jobTitle,
+                salary: salary,
+                barcode: barcode,
+                isWorker: isWorker,
                 role: role,
                 image: image,
                 isActive: isActive,
@@ -7810,6 +9163,11 @@ class $$UsersTableTableManager
                 required String username,
                 required String passwordHash,
                 required String fullName,
+                Value<String?> phone = const Value.absent(),
+                Value<String> jobTitle = const Value.absent(),
+                Value<double> salary = const Value.absent(),
+                Value<String?> barcode = const Value.absent(),
+                Value<bool> isWorker = const Value.absent(),
                 Value<String> role = const Value.absent(),
                 Value<String?> image = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
@@ -7822,6 +9180,11 @@ class $$UsersTableTableManager
                 username: username,
                 passwordHash: passwordHash,
                 fullName: fullName,
+                phone: phone,
+                jobTitle: jobTitle,
+                salary: salary,
+                barcode: barcode,
+                isWorker: isWorker,
                 role: role,
                 image: image,
                 isActive: isActive,
@@ -7837,12 +9200,19 @@ class $$UsersTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({invoicesRefs = false, stockMovementsRefs = false}) {
+              ({
+                invoicesRefs = false,
+                stockMovementsRefs = false,
+                workerAdvancesRefs = false,
+                workerProductIssuesRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (invoicesRefs) db.invoices,
                     if (stockMovementsRefs) db.stockMovements,
+                    if (workerAdvancesRefs) db.workerAdvances,
+                    if (workerProductIssuesRefs) db.workerProductIssues,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -7885,6 +9255,48 @@ class $$UsersTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (workerAdvancesRefs)
+                        await $_getPrefetchedData<
+                          User,
+                          $UsersTable,
+                          WorkerAdvance
+                        >(
+                          currentTable: table,
+                          referencedTable: $$UsersTableReferences
+                              ._workerAdvancesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$UsersTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).workerAdvancesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.workerId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (workerProductIssuesRefs)
+                        await $_getPrefetchedData<
+                          User,
+                          $UsersTable,
+                          WorkerProductIssue
+                        >(
+                          currentTable: table,
+                          referencedTable: $$UsersTableReferences
+                              ._workerProductIssuesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$UsersTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).workerProductIssuesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.workerId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -7905,7 +9317,12 @@ typedef $$UsersTableProcessedTableManager =
       $$UsersTableUpdateCompanionBuilder,
       (User, $$UsersTableReferences),
       User,
-      PrefetchHooks Function({bool invoicesRefs, bool stockMovementsRefs})
+      PrefetchHooks Function({
+        bool invoicesRefs,
+        bool stockMovementsRefs,
+        bool workerAdvancesRefs,
+        bool workerProductIssuesRefs,
+      })
     >;
 typedef $$ProductsTableCreateCompanionBuilder =
     ProductsCompanion Function({
@@ -13094,6 +14511,715 @@ typedef $$AppSettingsTableProcessedTableManager =
       AppSetting,
       PrefetchHooks Function()
     >;
+typedef $$WorkerAdvancesTableCreateCompanionBuilder =
+    WorkerAdvancesCompanion Function({
+      Value<int> id,
+      required int workerId,
+      required double amount,
+      Value<String?> reason,
+      Value<DateTime> createdAt,
+    });
+typedef $$WorkerAdvancesTableUpdateCompanionBuilder =
+    WorkerAdvancesCompanion Function({
+      Value<int> id,
+      Value<int> workerId,
+      Value<double> amount,
+      Value<String?> reason,
+      Value<DateTime> createdAt,
+    });
+
+final class $$WorkerAdvancesTableReferences
+    extends BaseReferences<_$AppDatabase, $WorkerAdvancesTable, WorkerAdvance> {
+  $$WorkerAdvancesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $UsersTable _workerIdTable(_$AppDatabase db) => db.users.createAlias(
+    $_aliasNameGenerator(db.workerAdvances.workerId, db.users.id),
+  );
+
+  $$UsersTableProcessedTableManager get workerId {
+    final $_column = $_itemColumn<int>('worker_id')!;
+
+    final manager = $$UsersTableTableManager(
+      $_db,
+      $_db.users,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_workerIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$WorkerAdvancesTableFilterComposer
+    extends Composer<_$AppDatabase, $WorkerAdvancesTable> {
+  $$WorkerAdvancesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$UsersTableFilterComposer get workerId {
+    final $$UsersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.workerId,
+      referencedTable: $db.users,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UsersTableFilterComposer(
+            $db: $db,
+            $table: $db.users,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$WorkerAdvancesTableOrderingComposer
+    extends Composer<_$AppDatabase, $WorkerAdvancesTable> {
+  $$WorkerAdvancesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$UsersTableOrderingComposer get workerId {
+    final $$UsersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.workerId,
+      referencedTable: $db.users,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UsersTableOrderingComposer(
+            $db: $db,
+            $table: $db.users,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$WorkerAdvancesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WorkerAdvancesTable> {
+  $$WorkerAdvancesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<double> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$UsersTableAnnotationComposer get workerId {
+    final $$UsersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.workerId,
+      referencedTable: $db.users,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UsersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.users,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$WorkerAdvancesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $WorkerAdvancesTable,
+          WorkerAdvance,
+          $$WorkerAdvancesTableFilterComposer,
+          $$WorkerAdvancesTableOrderingComposer,
+          $$WorkerAdvancesTableAnnotationComposer,
+          $$WorkerAdvancesTableCreateCompanionBuilder,
+          $$WorkerAdvancesTableUpdateCompanionBuilder,
+          (WorkerAdvance, $$WorkerAdvancesTableReferences),
+          WorkerAdvance,
+          PrefetchHooks Function({bool workerId})
+        > {
+  $$WorkerAdvancesTableTableManager(
+    _$AppDatabase db,
+    $WorkerAdvancesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WorkerAdvancesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$WorkerAdvancesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$WorkerAdvancesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> workerId = const Value.absent(),
+                Value<double> amount = const Value.absent(),
+                Value<String?> reason = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => WorkerAdvancesCompanion(
+                id: id,
+                workerId: workerId,
+                amount: amount,
+                reason: reason,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int workerId,
+                required double amount,
+                Value<String?> reason = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => WorkerAdvancesCompanion.insert(
+                id: id,
+                workerId: workerId,
+                amount: amount,
+                reason: reason,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$WorkerAdvancesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({workerId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (workerId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.workerId,
+                                referencedTable: $$WorkerAdvancesTableReferences
+                                    ._workerIdTable(db),
+                                referencedColumn:
+                                    $$WorkerAdvancesTableReferences
+                                        ._workerIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$WorkerAdvancesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $WorkerAdvancesTable,
+      WorkerAdvance,
+      $$WorkerAdvancesTableFilterComposer,
+      $$WorkerAdvancesTableOrderingComposer,
+      $$WorkerAdvancesTableAnnotationComposer,
+      $$WorkerAdvancesTableCreateCompanionBuilder,
+      $$WorkerAdvancesTableUpdateCompanionBuilder,
+      (WorkerAdvance, $$WorkerAdvancesTableReferences),
+      WorkerAdvance,
+      PrefetchHooks Function({bool workerId})
+    >;
+typedef $$WorkerProductIssuesTableCreateCompanionBuilder =
+    WorkerProductIssuesCompanion Function({
+      Value<int> id,
+      required int workerId,
+      required int productId,
+      required String productName,
+      required String barcode,
+      Value<int> quantity,
+      required double unitPrice,
+      Value<DateTime> createdAt,
+    });
+typedef $$WorkerProductIssuesTableUpdateCompanionBuilder =
+    WorkerProductIssuesCompanion Function({
+      Value<int> id,
+      Value<int> workerId,
+      Value<int> productId,
+      Value<String> productName,
+      Value<String> barcode,
+      Value<int> quantity,
+      Value<double> unitPrice,
+      Value<DateTime> createdAt,
+    });
+
+final class $$WorkerProductIssuesTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $WorkerProductIssuesTable,
+          WorkerProductIssue
+        > {
+  $$WorkerProductIssuesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $UsersTable _workerIdTable(_$AppDatabase db) => db.users.createAlias(
+    $_aliasNameGenerator(db.workerProductIssues.workerId, db.users.id),
+  );
+
+  $$UsersTableProcessedTableManager get workerId {
+    final $_column = $_itemColumn<int>('worker_id')!;
+
+    final manager = $$UsersTableTableManager(
+      $_db,
+      $_db.users,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_workerIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$WorkerProductIssuesTableFilterComposer
+    extends Composer<_$AppDatabase, $WorkerProductIssuesTable> {
+  $$WorkerProductIssuesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get productName => $composableBuilder(
+    column: $table.productName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get barcode => $composableBuilder(
+    column: $table.barcode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get unitPrice => $composableBuilder(
+    column: $table.unitPrice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$UsersTableFilterComposer get workerId {
+    final $$UsersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.workerId,
+      referencedTable: $db.users,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UsersTableFilterComposer(
+            $db: $db,
+            $table: $db.users,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$WorkerProductIssuesTableOrderingComposer
+    extends Composer<_$AppDatabase, $WorkerProductIssuesTable> {
+  $$WorkerProductIssuesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get productName => $composableBuilder(
+    column: $table.productName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get barcode => $composableBuilder(
+    column: $table.barcode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get unitPrice => $composableBuilder(
+    column: $table.unitPrice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$UsersTableOrderingComposer get workerId {
+    final $$UsersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.workerId,
+      referencedTable: $db.users,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UsersTableOrderingComposer(
+            $db: $db,
+            $table: $db.users,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$WorkerProductIssuesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WorkerProductIssuesTable> {
+  $$WorkerProductIssuesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get productId =>
+      $composableBuilder(column: $table.productId, builder: (column) => column);
+
+  GeneratedColumn<String> get productName => $composableBuilder(
+    column: $table.productName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get barcode =>
+      $composableBuilder(column: $table.barcode, builder: (column) => column);
+
+  GeneratedColumn<int> get quantity =>
+      $composableBuilder(column: $table.quantity, builder: (column) => column);
+
+  GeneratedColumn<double> get unitPrice =>
+      $composableBuilder(column: $table.unitPrice, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$UsersTableAnnotationComposer get workerId {
+    final $$UsersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.workerId,
+      referencedTable: $db.users,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UsersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.users,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$WorkerProductIssuesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $WorkerProductIssuesTable,
+          WorkerProductIssue,
+          $$WorkerProductIssuesTableFilterComposer,
+          $$WorkerProductIssuesTableOrderingComposer,
+          $$WorkerProductIssuesTableAnnotationComposer,
+          $$WorkerProductIssuesTableCreateCompanionBuilder,
+          $$WorkerProductIssuesTableUpdateCompanionBuilder,
+          (WorkerProductIssue, $$WorkerProductIssuesTableReferences),
+          WorkerProductIssue,
+          PrefetchHooks Function({bool workerId})
+        > {
+  $$WorkerProductIssuesTableTableManager(
+    _$AppDatabase db,
+    $WorkerProductIssuesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WorkerProductIssuesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$WorkerProductIssuesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$WorkerProductIssuesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> workerId = const Value.absent(),
+                Value<int> productId = const Value.absent(),
+                Value<String> productName = const Value.absent(),
+                Value<String> barcode = const Value.absent(),
+                Value<int> quantity = const Value.absent(),
+                Value<double> unitPrice = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => WorkerProductIssuesCompanion(
+                id: id,
+                workerId: workerId,
+                productId: productId,
+                productName: productName,
+                barcode: barcode,
+                quantity: quantity,
+                unitPrice: unitPrice,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int workerId,
+                required int productId,
+                required String productName,
+                required String barcode,
+                Value<int> quantity = const Value.absent(),
+                required double unitPrice,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => WorkerProductIssuesCompanion.insert(
+                id: id,
+                workerId: workerId,
+                productId: productId,
+                productName: productName,
+                barcode: barcode,
+                quantity: quantity,
+                unitPrice: unitPrice,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$WorkerProductIssuesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({workerId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (workerId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.workerId,
+                                referencedTable:
+                                    $$WorkerProductIssuesTableReferences
+                                        ._workerIdTable(db),
+                                referencedColumn:
+                                    $$WorkerProductIssuesTableReferences
+                                        ._workerIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$WorkerProductIssuesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $WorkerProductIssuesTable,
+      WorkerProductIssue,
+      $$WorkerProductIssuesTableFilterComposer,
+      $$WorkerProductIssuesTableOrderingComposer,
+      $$WorkerProductIssuesTableAnnotationComposer,
+      $$WorkerProductIssuesTableCreateCompanionBuilder,
+      $$WorkerProductIssuesTableUpdateCompanionBuilder,
+      (WorkerProductIssue, $$WorkerProductIssuesTableReferences),
+      WorkerProductIssue,
+      PrefetchHooks Function({bool workerId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -13124,4 +15250,8 @@ class $AppDatabaseManager {
       $$DailyClosingsTableTableManager(_db, _db.dailyClosings);
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
+  $$WorkerAdvancesTableTableManager get workerAdvances =>
+      $$WorkerAdvancesTableTableManager(_db, _db.workerAdvances);
+  $$WorkerProductIssuesTableTableManager get workerProductIssues =>
+      $$WorkerProductIssuesTableTableManager(_db, _db.workerProductIssues);
 }
