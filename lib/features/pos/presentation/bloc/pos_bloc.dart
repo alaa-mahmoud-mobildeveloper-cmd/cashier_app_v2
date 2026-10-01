@@ -1,4 +1,3 @@
-import 'package:cashier_app_v2/core/database/app_database.dart';
 import 'package:cashier_app_v2/features/auth/domain/session_provider.dart';
 import 'package:cashier_app_v2/features/pos/data/models/cart_item_model.dart';
 import 'package:cashier_app_v2/features/pos/domain/repositories/sales_repository.dart';
@@ -291,6 +290,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         tax: state.tax,
         paymentMethod: event.paymentMethod,
         paidAmount: event.paidAmount,
+        paymentAccountId: event.paymentAccountId,
       );
 
       final products = await _salesRepository.getProductsPage(

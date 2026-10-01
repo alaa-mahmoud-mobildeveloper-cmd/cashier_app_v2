@@ -12,6 +12,8 @@ import 'package:cashier_app_v2/core/database/tables/dailyclosing.dart';
 import 'package:cashier_app_v2/core/database/tables/expenses.dart';
 import 'package:cashier_app_v2/core/database/tables/invoice_items_table.dart';
 import 'package:cashier_app_v2/core/database/tables/invoices_table.dart';
+import 'package:cashier_app_v2/core/database/tables/payment_accounts.dart';
+import 'package:cashier_app_v2/core/database/tables/payment_account_transactions.dart';
 import 'package:cashier_app_v2/core/database/tables/products_table.dart';
 import 'package:cashier_app_v2/core/database/tables/purchase_items.dart';
 import 'package:cashier_app_v2/core/database/tables/purchase_payments.dart';
@@ -42,6 +44,8 @@ part 'app_database.g.dart';
     AppSettings,
     WorkerAdvances,
     WorkerProductIssues,
+    PaymentAccounts,
+    PaymentAccountTransactions,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -50,7 +54,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(QueryExecutor executor) : super(executor);
 
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 19;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -139,6 +143,12 @@ class AppDatabase extends _$AppDatabase {
       // Version 18: persist paid/pending expense status.
       if (from < 18) {
         await _safeAddColumn(m, expenses, expenses.status);
+      }
+
+      // Version 19: wallet/Visa accounts and their immutable payment ledger.
+      if (from < 19) {
+        await _safeCreateTable(m, paymentAccounts);
+        await _safeCreateTable(m, paymentAccountTransactions);
       }
     },
   );

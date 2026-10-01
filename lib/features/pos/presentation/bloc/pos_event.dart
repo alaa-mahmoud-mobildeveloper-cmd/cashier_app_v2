@@ -82,16 +82,19 @@ class ApplyDiscount extends CartEvent {
 class CheckoutCart extends CartEvent {
   final String paymentMethod;
   final double? paidAmount;
+  final int? paymentAccountId;
 
   const CheckoutCart({
     required this.paymentMethod,
     this.paidAmount,
+    this.paymentAccountId,
   });
 
   @override
   List<Object?> get props => [
     paymentMethod,
     paidAmount,
+    paymentAccountId,
   ];
 }
 

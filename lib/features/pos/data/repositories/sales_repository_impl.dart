@@ -75,6 +75,7 @@ class SalesRepositoryImpl implements SalesRepository {
     required double tax,
     required String paymentMethod,
     double? paidAmount,
+    int? paymentAccountId,
   }) async {
     if (cartItems.isEmpty) {
       throw Exception('لا يمكن تنفيذ بيع بدون منتجات');
@@ -87,11 +88,39 @@ class SalesRepositoryImpl implements SalesRepository {
 
     final netAmount = subtotal + tax - discount;
     final paid = paidAmount ?? netAmount;
+    final requiresAccount =
+        paymentMethod == 'wallet' || paymentMethod == 'visa';
+
+    if (requiresAccount != (paymentAccountId != null)) {
+      throw StateError(
+        requiresAccount
+            ? 'اختر حساب المحفظة أو الفيزا قبل إتمام البيع'
+            : 'طريقة الدفع المحددة لا تستخدم حساب محفظة أو فيزا',
+      );
+    }
+    if (requiresAccount && (paid <= 0 || paid > netAmount)) {
+      throw StateError(
+        'مبلغ التحصيل الرقمي يجب أن يكون أكبر من صفر وألا يتجاوز الإجمالي',
+      );
+    }
 
     final invoiceNumber =
         'INV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
 
     return _db.transaction(() async {
+      final paymentAccount = paymentAccountId == null
+          ? null
+          : await (_db.select(_db.paymentAccounts)
+                ..where((account) =>
+                    account.id.equals(paymentAccountId) &
+                    account.isActive.equals(true) &
+                    account.type.equals(paymentMethod)))
+              .getSingleOrNull();
+
+      if (requiresAccount && paymentAccount == null) {
+        throw StateError('حساب الدفع غير نشط أو لا يطابق طريقة الدفع');
+      }
+
       double totalProfit = 0;
 
       final products = <int, Product>{};
@@ -135,6 +164,20 @@ class SalesRepositoryImpl implements SalesRepository {
           profit: Value(totalProfit),
         ),
       );
+
+      if (paymentAccount != null) {
+        await _db.into(_db.paymentAccountTransactions).insert(
+          PaymentAccountTransactionsCompanion.insert(
+            accountId: paymentAccount.id,
+            invoiceId: Value(invoiceId),
+            invoiceNumber: Value(invoiceNumber),
+            userId: userId,
+            kind: 'sale',
+            amount: paid,
+            note: const Value('تحصيل من فاتورة بيع'),
+          ),
+        );
+      }
 
       for (final item in cartItems) {
         final product = products[item.product.id]!;
@@ -278,6 +321,29 @@ class SalesRepositoryImpl implements SalesRepository {
             note: Value(
               'إرجاع الفاتورة ${targetInvoice.invoiceNumber}',
             ),
+          ),
+        );
+      }
+
+      final accountReceipts = await (_db.select(
+        _db.paymentAccountTransactions,
+      )..where(
+              (entry) =>
+                  entry.invoiceId.equals(targetInvoice.id) &
+                  entry.kind.equals('sale'),
+            ))
+          .get();
+
+      for (final receipt in accountReceipts) {
+        await _db.into(_db.paymentAccountTransactions).insert(
+          PaymentAccountTransactionsCompanion.insert(
+            accountId: receipt.accountId,
+            invoiceId: Value(targetInvoice.id),
+            invoiceNumber: Value(targetInvoice.invoiceNumber),
+            userId: userId,
+            kind: 'refund',
+            amount: receipt.amount,
+            note: const Value('عكس تحصيل فاتورة مرتجعة'),
           ),
         );
       }
