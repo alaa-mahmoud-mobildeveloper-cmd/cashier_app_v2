@@ -50,7 +50,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(QueryExecutor executor) : super(executor);
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -134,6 +134,11 @@ class AppDatabase extends _$AppDatabase {
         await _safeAddColumn(m, users, users.isWorker);
         await _safeCreateTable(m, workerAdvances);
         await _safeCreateTable(m, workerProductIssues);
+      }
+
+      // Version 18: persist paid/pending expense status.
+      if (from < 18) {
+        await _safeAddColumn(m, expenses, expenses.status);
       }
     },
   );
