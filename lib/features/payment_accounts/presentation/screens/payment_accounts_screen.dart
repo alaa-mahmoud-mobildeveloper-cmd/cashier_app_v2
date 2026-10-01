@@ -1,6 +1,7 @@
 import 'package:cashier_app_v2/core/constants/app_colors.dart';
 import 'package:cashier_app_v2/core/database/app_database.dart';
 import 'package:cashier_app_v2/di.dart';
+import 'package:cashier_app_v2/features/auth/domain/session_provider.dart';
 import 'package:cashier_app_v2/features/payment_accounts/data/payment_account_repository.dart';
 import 'package:cashier_app_v2/features/payment_accounts/domain/payment_account.dart';
 import 'package:flutter/material.dart';
@@ -63,7 +64,7 @@ class _PaymentAccountsScreenState extends State<PaymentAccountsScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'أضف حسابات الاستلام لتسجيل مدفوعات الكاشير عليها تلقائيًا.',
+                  'سجّل الرصيد الحالي، وتابع تحصيلات الكاشير والإيداع والسحب.',
                   style: TextStyle(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 16),
@@ -194,7 +195,7 @@ class _PaymentAccountsScreenState extends State<PaymentAccountsScreen> {
               children: [
                 Expanded(
                   child: _summaryValue(
-                    'الرصيد المسجل',
+                    'الرصيد الحالي',
                     '${account.balance.toStringAsFixed(2)} ج',
                     AppColors.goldLight,
                   ),
@@ -217,6 +218,33 @@ class _PaymentAccountsScreenState extends State<PaymentAccountsScreen> {
                 ),
               ],
             ),
+            if (isWallet) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: account.isActive
+                          ? () => _adjustWalletBalance(account, isDeposit: true)
+                          : null,
+                      icon: const Icon(Icons.add_circle_outline),
+                      label: const Text('إيداع'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: account.isActive
+                          ? () =>
+                                _adjustWalletBalance(account, isDeposit: false)
+                          : null,
+                      icon: const Icon(Icons.remove_circle_outline),
+                      label: const Text('سحب'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -253,10 +281,53 @@ class _PaymentAccountsScreenState extends State<PaymentAccountsScreen> {
         name: result.name,
         provider: result.provider,
         reference: result.reference,
+        openingBalance: result.openingBalance,
+        userId: getIt<SessionProvider>().currentUserId,
       );
       if (mounted) _showMessage('تمت إضافة الحساب');
     } catch (error) {
       if (mounted) _showMessage('تعذرت إضافة الحساب: $error', isError: true);
+    }
+  }
+
+  Future<void> _adjustWalletBalance(
+    PaymentAccountSummary account, {
+    required bool isDeposit,
+  }) async {
+    final result = await showDialog<_BalanceAdjustmentResult>(
+      context: context,
+      builder: (_) => _BalanceAdjustmentDialog(
+        accountName: account.name,
+        currentBalance: account.balance,
+        isDeposit: isDeposit,
+      ),
+    );
+    if (result == null) return;
+
+    try {
+      final userId = getIt<SessionProvider>().currentUserId;
+      if (isDeposit) {
+        await _repository.recordDeposit(
+          accountId: account.id,
+          userId: userId,
+          amount: result.amount,
+          note: result.note,
+        );
+      } else {
+        await _repository.recordWithdrawal(
+          accountId: account.id,
+          userId: userId,
+          amount: result.amount,
+          note: result.note,
+        );
+      }
+      if (mounted) {
+        _showMessage(isDeposit ? 'تم تسجيل الإيداع' : 'تم تسجيل السحب');
+      }
+    } catch (error) {
+      if (mounted) {
+        _showMessage('تعذر تسجيل الحركة: $error', isError: true);
+      }
     }
   }
 
@@ -333,19 +404,21 @@ class _PaymentAccountsScreenState extends State<PaymentAccountsScreen> {
                           ),
                           itemBuilder: (_, index) {
                             final entry = entries[index];
-                            final isRefund = entry.isRefund;
+                            final decreasesBalance = entry.decreasesBalance;
                             return ListTile(
                               contentPadding: EdgeInsets.zero,
                               leading: Icon(
-                                isRefund
+                                entry.kind == 'withdrawal'
+                                    ? Icons.call_made_outlined
+                                    : entry.isRefund
                                     ? Icons.undo_outlined
                                     : Icons.call_received_outlined,
-                                color: isRefund
+                                color: decreasesBalance
                                     ? AppColors.danger
                                     : AppColors.success,
                               ),
                               title: Text(
-                                isRefund ? 'استرداد' : 'تحصيل',
+                                entry.kindLabel,
                                 style: const TextStyle(
                                   color: AppColors.textPrimary,
                                 ),
@@ -366,9 +439,9 @@ class _PaymentAccountsScreenState extends State<PaymentAccountsScreen> {
                                 ),
                               ),
                               trailing: Text(
-                                '${isRefund ? '-' : '+'}${entry.amount.toStringAsFixed(2)} ج',
+                                '${decreasesBalance ? '-' : '+'}${entry.amount.toStringAsFixed(2)} ج',
                                 style: TextStyle(
-                                  color: isRefund
+                                  color: decreasesBalance
                                       ? AppColors.danger
                                       : AppColors.success,
                                   fontWeight: FontWeight.bold,
@@ -406,12 +479,14 @@ class _AccountFormResult {
   final String name;
   final String? provider;
   final String? reference;
+  final double openingBalance;
 
   const _AccountFormResult({
     required this.type,
     required this.name,
     required this.provider,
     required this.reference,
+    required this.openingBalance,
   });
 }
 
@@ -427,6 +502,7 @@ class _AccountFormDialogState extends State<_AccountFormDialog> {
   final _nameController = TextEditingController();
   final _providerController = TextEditingController();
   final _referenceController = TextEditingController();
+  final _openingBalanceController = TextEditingController(text: '0');
   String _type = PaymentAccountType.wallet.name;
 
   @override
@@ -434,6 +510,7 @@ class _AccountFormDialogState extends State<_AccountFormDialog> {
     _nameController.dispose();
     _providerController.dispose();
     _referenceController.dispose();
+    _openingBalanceController.dispose();
     super.dispose();
   }
 
@@ -507,6 +584,26 @@ class _AccountFormDialogState extends State<_AccountFormDialog> {
                     return null;
                   },
                 ),
+                if (isWallet) ...[
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _openingBalanceController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'الرصيد الموجود حاليًا في المحفظة',
+                      helperText: 'سيُسجل كرصيد افتتاحي في سجل الحركات',
+                    ),
+                    validator: (value) {
+                      final amount = double.tryParse(value?.trim() ?? '');
+                      if (amount == null || !amount.isFinite || amount < 0) {
+                        return 'أدخل رصيدًا صحيحًا غير سالب';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
               ],
             ),
           ),
@@ -531,6 +628,125 @@ class _AccountFormDialogState extends State<_AccountFormDialog> {
         name: _nameController.text.trim(),
         provider: _providerController.text.trim(),
         reference: _referenceController.text.trim(),
+        openingBalance: _type == PaymentAccountType.wallet.name
+            ? double.parse(_openingBalanceController.text.trim())
+            : 0,
+      ),
+    );
+  }
+}
+
+class _BalanceAdjustmentResult {
+  final double amount;
+  final String? note;
+
+  const _BalanceAdjustmentResult({required this.amount, required this.note});
+}
+
+class _BalanceAdjustmentDialog extends StatefulWidget {
+  final String accountName;
+  final double currentBalance;
+  final bool isDeposit;
+
+  const _BalanceAdjustmentDialog({
+    required this.accountName,
+    required this.currentBalance,
+    required this.isDeposit,
+  });
+
+  @override
+  State<_BalanceAdjustmentDialog> createState() =>
+      _BalanceAdjustmentDialogState();
+}
+
+class _BalanceAdjustmentDialogState extends State<_BalanceAdjustmentDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _amountController = TextEditingController();
+  final _noteController = TextEditingController();
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDeposit = widget.isDeposit;
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text(
+          isDeposit
+              ? 'إيداع في ${widget.accountName}'
+              : 'سحب من ${widget.accountName}',
+        ),
+        content: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'الرصيد الحالي: ${widget.currentBalance.toStringAsFixed(2)} ج',
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _amountController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: isDeposit ? 'مبلغ الإيداع' : 'مبلغ السحب',
+                ),
+                validator: (value) {
+                  final amount = double.tryParse(value?.trim() ?? '');
+                  if (amount == null || !amount.isFinite || amount <= 0) {
+                    return 'أدخل مبلغًا صحيحًا أكبر من صفر';
+                  }
+                  if (!isDeposit && amount > widget.currentBalance) {
+                    return 'مبلغ السحب أكبر من الرصيد الحالي';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _noteController,
+                maxLength: 120,
+                decoration: const InputDecoration(
+                  labelText: 'ملاحظة (اختياري)',
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: _save,
+            child: Text(isDeposit ? 'تأكيد الإيداع' : 'تأكيد السحب'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _save() {
+    if (!_formKey.currentState!.validate()) return;
+    Navigator.pop(
+      context,
+      _BalanceAdjustmentResult(
+        amount: double.parse(_amountController.text.trim()),
+        note: _noteController.text.trim().isEmpty
+            ? null
+            : _noteController.text.trim(),
       ),
     );
   }

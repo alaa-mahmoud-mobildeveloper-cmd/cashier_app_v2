@@ -15,7 +15,8 @@ class PaymentAccountTransactions extends Table {
 
   IntColumn get userId => integer().references(Users, #id)();
 
-  /// sale is a receipt; refund reverses a returned invoice receipt.
+  /// sale/opening_balance/deposit increase the account balance;
+  /// refund/withdrawal decrease it. Entries are immutable ledger movements.
   TextColumn get kind => text()();
 
   /// Always stored as a positive amount; kind determines the balance sign.

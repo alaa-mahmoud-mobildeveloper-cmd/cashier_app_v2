@@ -21,7 +21,8 @@ class PaymentAccountRepository {
             COALESCE(
               SUM(
                 CASE
-                  WHEN entries.kind = 'refund' THEN -entries.amount
+                  WHEN entries.kind IN ('refund', 'withdrawal')
+                    THEN -entries.amount
                   ELSE entries.amount
                 END
               ),
@@ -90,6 +91,8 @@ class PaymentAccountRepository {
     required String name,
     String? provider,
     String? reference,
+    double openingBalance = 0,
+    int? userId,
   }) {
     _validateType(type);
     final cleanName = name.trim();
@@ -100,6 +103,24 @@ class PaymentAccountRepository {
         'الاسم يجب أن يكون من حرفين إلى 80 حرفًا',
       );
     }
+    if (!openingBalance.isFinite || openingBalance < 0) {
+      throw ArgumentError.value(
+        openingBalance,
+        'openingBalance',
+        'الرصيد الافتتاحي يجب أن يكون رقمًا موجبًا أو صفرًا',
+      );
+    }
+    if (type != PaymentAccountType.wallet.name && openingBalance > 0) {
+      throw ArgumentError.value(
+        openingBalance,
+        'openingBalance',
+        'الرصيد الافتتاحي متاح للمحافظ الإلكترونية فقط',
+      );
+    }
+    if (openingBalance > 0 && userId == null) {
+      throw ArgumentError('يلزم تحديد المستخدم لتسجيل الرصيد الافتتاحي');
+    }
+
     final cleanReference = _cleanOptional(reference);
     final referenceDigits = cleanReference?.replaceAll(RegExp(r'\D'), '') ?? '';
     if (type == PaymentAccountType.visa.name &&
@@ -112,14 +133,127 @@ class PaymentAccountRepository {
       );
     }
 
+    return _database.transaction(() async {
+      final accountId = await _database
+          .into(_database.paymentAccounts)
+          .insert(
+            PaymentAccountsCompanion.insert(
+              type: type,
+              name: cleanName,
+              provider: Value(_cleanOptional(provider)),
+              reference: Value(cleanReference),
+            ),
+          );
+      if (openingBalance > 0) {
+        await _insertLedgerEntry(
+          accountId: accountId,
+          userId: userId!,
+          kind: 'opening_balance',
+          amount: openingBalance,
+          note: 'رصيد افتتاحي',
+        );
+      }
+      return accountId;
+    });
+  }
+
+  Future<int> recordDeposit({
+    required int accountId,
+    required int userId,
+    required double amount,
+    String? note,
+  }) => _recordWalletMovement(
+    accountId: accountId,
+    userId: userId,
+    kind: 'deposit',
+    amount: amount,
+    note: note,
+  );
+
+  Future<int> recordWithdrawal({
+    required int accountId,
+    required int userId,
+    required double amount,
+    String? note,
+  }) => _recordWalletMovement(
+    accountId: accountId,
+    userId: userId,
+    kind: 'withdrawal',
+    amount: amount,
+    note: note,
+  );
+
+  Future<int> _recordWalletMovement({
+    required int accountId,
+    required int userId,
+    required String kind,
+    required double amount,
+    String? note,
+  }) async {
+    if (!amount.isFinite || amount <= 0) {
+      throw ArgumentError.value(amount, 'amount', 'أدخل مبلغًا أكبر من صفر');
+    }
+
+    final cleanNote = _cleanOptional(note);
+    return _database.transaction(() async {
+      final account = await (_database.select(
+        _database.paymentAccounts,
+      )..where((row) => row.id.equals(accountId))).getSingleOrNull();
+      if (account == null) {
+        throw StateError('حساب المحفظة غير موجود');
+      }
+      if (account.type != PaymentAccountType.wallet.name) {
+        throw StateError('الإيداع والسحب اليدويان متاحان للمحافظ فقط');
+      }
+      if (!account.isActive) {
+        throw StateError('لا يمكن تسجيل حركة على محفظة متوقفة');
+      }
+
+      if (kind == 'withdrawal') {
+        final entries = await (_database.select(
+          _database.paymentAccountTransactions,
+        )..where((entry) => entry.accountId.equals(accountId))).get();
+        final balance = entries.fold<double>(
+          0,
+          (total, entry) =>
+              total +
+              (entry.kind == 'refund' || entry.kind == 'withdrawal'
+                  ? -entry.amount
+                  : entry.amount),
+        );
+        if (amount > balance) {
+          throw StateError('مبلغ السحب أكبر من الرصيد المتاح');
+        }
+      }
+
+      return _insertLedgerEntry(
+        accountId: accountId,
+        userId: userId,
+        kind: kind,
+        amount: amount,
+        note: cleanNote ?? (kind == 'deposit' ? 'إيداع يدوي' : 'سحب يدوي'),
+      );
+    });
+  }
+
+  Future<int> _insertLedgerEntry({
+    required int accountId,
+    required int userId,
+    required String kind,
+    required double amount,
+    required String note,
+  }) {
     return _database
-        .into(_database.paymentAccounts)
+        .into(_database.paymentAccountTransactions)
         .insert(
-          PaymentAccountsCompanion.insert(
-            type: type,
-            name: cleanName,
-            provider: Value(_cleanOptional(provider)),
-            reference: Value(cleanReference),
+          PaymentAccountTransactionsCompanion.insert(
+            accountId: accountId,
+            invoiceId: const Value(null),
+            invoiceNumber: const Value(null),
+            userId: userId,
+            kind: kind,
+            amount: amount,
+            note: Value(note),
           ),
         );
   }
