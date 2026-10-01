@@ -1,5 +1,6 @@
 import 'package:cashier_app_v2/core/database/app_database.dart';
 import 'package:cashier_app_v2/features/auth/domain/session_provider.dart';
+import 'package:cashier_app_v2/features/home/presentation/screens/admin_details_screen.dart';
 import 'package:cashier_app_v2/features/workers/domain/entities/worker.dart';
 import 'package:cashier_app_v2/features/workers/presentation/screen/worker_details_screen.dart';
 import 'package:flutter/material.dart';
@@ -39,6 +40,10 @@ class _MyDetailsScreenState extends State<MyDetailsScreen> {
         final user = snapshot.data;
         if (user == null) {
           return const Center(child: Text('بيانات الحساب غير متاحة'));
+        }
+
+        if (user.role.trim().toLowerCase() == 'admin' && !user.isWorker) {
+          return AdminDetailsScreen(admin: user);
         }
 
         final worker = Worker(
