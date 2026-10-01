@@ -90,7 +90,7 @@ class WorkerRow extends StatelessWidget {
               ),
             ),
 
-            // الأجراءات (عرض وحذف)
+            // الإجراءات (عرض وإخفاء)
             SizedBox(
               width: 96,
               child: Row(
@@ -99,12 +99,20 @@ class WorkerRow extends StatelessWidget {
                   IconButton(
                     onPressed: onView,
                     tooltip: 'عرض التفاصيل',
-                    icon: const Icon(Icons.visibility_outlined, color: AppColors.gold, size: 19),
+                    icon: const Icon(
+                      Icons.visibility_outlined,
+                      color: AppColors.gold,
+                      size: 19,
+                    ),
                   ),
                   IconButton(
                     onPressed: onDelete,
-                    tooltip: 'حذف العامل',
-                    icon: const Icon(Icons.delete_outline, color: AppColors.danger, size: 19),
+                    tooltip: 'إخفاء العامل مع الاحتفاظ بالسجل',
+                    icon: const Icon(
+                      Icons.archive_outlined,
+                      color: AppColors.danger,
+                      size: 19,
+                    ),
                   ),
                 ],
               ),
@@ -120,7 +128,9 @@ class WorkerRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: (isActive ? AppColors.success : AppColors.textHint).withValues(alpha: .12),
+        color: (isActive ? AppColors.success : AppColors.textHint).withValues(
+          alpha: .12,
+        ),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(

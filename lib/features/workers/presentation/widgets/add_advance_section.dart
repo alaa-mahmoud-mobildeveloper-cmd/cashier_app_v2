@@ -5,12 +5,14 @@ class AddAdvanceSection extends StatelessWidget {
   final TextEditingController amountController;
   final TextEditingController reasonController;
   final VoidCallback? onSubmit;
+  final bool isSubmitting;
 
   const AddAdvanceSection({
     super.key,
     required this.amountController,
     required this.reasonController,
     this.onSubmit,
+    this.isSubmitting = false,
   });
 
   @override
@@ -24,7 +26,14 @@ class AddAdvanceSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('إضافة سلفة', style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.bold, fontSize: 14)),
+          const Text(
+            'إضافة سلفة',
+            style: TextStyle(
+              color: AppColors.danger,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
           const SizedBox(height: 12),
           TextField(
             controller: amountController,
@@ -40,8 +49,14 @@ class AddAdvanceSection extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: onSubmit,
-              child: const Text('تسجيل السلفة'),
+              onPressed: isSubmitting ? null : onSubmit,
+              child: isSubmitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('تسجيل السلفة'),
             ),
           ),
         ],

@@ -5,20 +5,36 @@ import '../../domain/entities/worker.dart';
 class WorkerDetailsSummaryCards extends StatelessWidget {
   final Worker worker; // تأكد من وجود هذا السطر
   final bool isCompact;
+  final double advancesTotal;
+  final double productsTotal;
 
   const WorkerDetailsSummaryCards({
     super.key,
     required this.worker, // وتأكد من وجوده هنا
     required this.isCompact,
+    required this.advancesTotal,
+    required this.productsTotal,
   });
 
   @override
   Widget build(BuildContext context) {
     final cards = [
       _summaryCard('الراتب الشهري', '${worker.salary} ج', AppColors.gold),
-      _summaryCard('إجمالي السلف', '0 ج', AppColors.danger),
-      _summaryCard('إجمالي الأخذ', '0 ج', AppColors.gold),
-      _summaryCard('المستحق له', '${worker.salary} ج', AppColors.success),
+      _summaryCard(
+        'إجمالي السلف',
+        '${advancesTotal.toStringAsFixed(2)} ج',
+        AppColors.danger,
+      ),
+      _summaryCard(
+        'إجمالي الأخذ',
+        '${productsTotal.toStringAsFixed(2)} ج',
+        AppColors.gold,
+      ),
+      _summaryCard(
+        'المستحق له',
+        '${(worker.salary - advancesTotal - productsTotal).toStringAsFixed(2)} ج',
+        AppColors.success,
+      ),
     ];
 
     if (isCompact) {
@@ -34,12 +50,16 @@ class WorkerDetailsSummaryCards extends StatelessWidget {
     }
 
     return Row(
-      children: cards.map((card) => Expanded(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6),
-          child: card,
-        ),
-      )).toList(),
+      children: cards
+          .map(
+            (card) => Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: card,
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 
@@ -57,14 +77,21 @@ class WorkerDetailsSummaryCards extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 6),
           Text(
             value,
-            style: TextStyle(color: color, fontSize: 15, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: color,
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
