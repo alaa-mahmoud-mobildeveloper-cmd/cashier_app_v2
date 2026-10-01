@@ -19,6 +19,9 @@ abstract class SalesRepository {
     required String paymentMethod,
     double? paidAmount,
     int? paymentAccountId,
+    int? customerId,
+    String? newCustomerName,
+    String? newCustomerPhone,
   });
 
   Future<List<Invoice>> getRecentInvoices();
