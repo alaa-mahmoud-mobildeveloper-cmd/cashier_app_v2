@@ -300,7 +300,8 @@ class PaymentAccountRepository {
 
   void _validateType(String type) {
     if (type != PaymentAccountType.wallet.name &&
-        type != PaymentAccountType.visa.name) {
+        type != PaymentAccountType.visa.name &&
+        type != PaymentAccountType.fawry.name) {
       throw ArgumentError.value(type, 'type', 'نوع الحساب غير مدعوم');
     }
   }

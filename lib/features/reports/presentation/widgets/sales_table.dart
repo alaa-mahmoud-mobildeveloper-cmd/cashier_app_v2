@@ -33,6 +33,8 @@ class SalesTable extends StatelessWidget {
         return AppColors.success;
       case PaymentMethod.visa:
         return const Color(0xFF4C8DFF);
+      case PaymentMethod.fawry:
+        return const Color(0xFFFFB300);
       case PaymentMethod.wallet:
         return AppColors.danger;
       case PaymentMethod.credit:
@@ -48,6 +50,8 @@ class SalesTable extends StatelessWidget {
         return 'محفظه الكترونيه';
       case PaymentMethod.visa:
         return 'فيزا';
+      case PaymentMethod.fawry:
+        return 'فوري';
       case PaymentMethod.credit:
         return 'اجل';
     }

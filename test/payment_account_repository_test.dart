@@ -62,7 +62,7 @@ void main() {
   });
 
   test(
-    'records wallet and Visa receipts and reverses them on invoice return',
+    'records wallet, Visa, and Fawry receipts and reverses returned sales',
     () async {
       final walletId = await accounts.addAccount(
         type: 'wallet',
@@ -75,6 +75,12 @@ void main() {
         name: 'جهاز فيزا 1',
         provider: 'بنك الاختبار',
         reference: '1234',
+      );
+      final fawryId = await accounts.addAccount(
+        type: 'fawry',
+        name: 'حساب فوري الفرع',
+        provider: 'فوري',
+        reference: 'MERCHANT-001',
       );
       expect(
         () => accounts.addAccount(
@@ -101,16 +107,30 @@ void main() {
         paymentMethod: 'visa',
         paymentAccountId: visaId,
       );
+      final fawryInvoiceId = await sales.checkout(
+        userId: userId,
+        cartItems: [CartItem(product: product)],
+        discount: 0,
+        tax: 0,
+        paymentMethod: 'fawry',
+        paymentAccountId: fawryId,
+      );
 
       final invoices = await database.select(database.invoices).get();
       expect(invoices.map((invoice) => invoice.paymentMethod), [
         'wallet',
         'visa',
+        'fawry',
       ]);
-      expect(invoices.map((invoice) => invoice.userId), [userId, userId]);
+      expect(invoices.map((invoice) => invoice.userId), [
+        userId,
+        userId,
+        userId,
+      ]);
 
       final walletEntries = await accounts.watchEntries(walletId).first;
       final visaEntries = await accounts.watchEntries(visaId).first;
+      final fawryEntries = await accounts.watchEntries(fawryId).first;
       expect(walletEntries, hasLength(1));
       expect(walletEntries.single.kind, 'sale');
       expect(walletEntries.single.invoiceId, walletInvoiceId);
@@ -118,6 +138,13 @@ void main() {
       expect(walletEntries.single.userId, userId);
       expect(visaEntries, hasLength(1));
       expect(visaEntries.single.invoiceId, visaInvoiceId);
+      expect(fawryEntries, hasLength(1));
+      expect(fawryEntries.single.kind, 'sale');
+      expect(fawryEntries.single.invoiceId, fawryInvoiceId);
+      expect(
+        (await accounts.getActiveAccounts(type: 'fawry')).single.typeLabel,
+        'فوري',
+      );
 
       var summaries = await accounts.watchSummaries().first;
       expect(
@@ -128,11 +155,22 @@ void main() {
         summaries.singleWhere((account) => account.id == visaId).balance,
         25,
       );
+      expect(
+        summaries.singleWhere((account) => account.id == fawryId).balance,
+        25,
+      );
 
       await sales.returnInvoice(userId: userId, invoiceId: walletInvoiceId);
+      await sales.returnInvoice(userId: userId, invoiceId: fawryInvoiceId);
       final returnedEntries = await accounts.watchEntries(walletId).first;
       expect(returnedEntries, hasLength(2));
       expect(returnedEntries.first.kind, 'refund');
+      final returnedFawryEntries = await accounts.watchEntries(fawryId).first;
+      expect(returnedFawryEntries, hasLength(2));
+      expect(
+        returnedFawryEntries.any((entry) => entry.kind == 'refund'),
+        isTrue,
+      );
       summaries = await accounts.watchSummaries().first;
       expect(
         summaries.singleWhere((account) => account.id == walletId).balance,
@@ -141,6 +179,10 @@ void main() {
       expect(
         summaries.singleWhere((account) => account.id == visaId).balance,
         25,
+      );
+      expect(
+        summaries.singleWhere((account) => account.id == fawryId).balance,
+        0,
       );
     },
   );
@@ -263,6 +305,10 @@ void main() {
         type: 'wallet',
         name: 'محفظة الفرع',
       );
+      final fawryId = await accounts.addAccount(
+        type: 'fawry',
+        name: 'حساب فوري الفرع',
+      );
 
       Future<int> checkout({required String method, int? accountId}) {
         return sales.checkout(
@@ -280,10 +326,20 @@ void main() {
         checkout(method: 'visa', accountId: walletId),
         throwsStateError,
       );
+      await expectLater(checkout(method: 'fawry'), throwsStateError);
+      await expectLater(
+        checkout(method: 'fawry', accountId: walletId),
+        throwsStateError,
+      );
 
       await accounts.setAccountActive(accountId: walletId, isActive: false);
       await expectLater(
         checkout(method: 'wallet', accountId: walletId),
+        throwsStateError,
+      );
+      await accounts.setAccountActive(accountId: fawryId, isActive: false);
+      await expectLater(
+        checkout(method: 'fawry', accountId: fawryId),
         throwsStateError,
       );
 
@@ -297,6 +353,7 @@ void main() {
       )..where((row) => row.id.equals(product.id))).getSingle();
       expect(unchangedProduct.stockQuantity, 10);
       expect(await accounts.getActiveAccounts(type: 'wallet'), isEmpty);
+      expect(await accounts.getActiveAccounts(type: 'fawry'), isEmpty);
     },
   );
 

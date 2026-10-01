@@ -150,7 +150,9 @@ category: category,
 }
 
 void _handlePaymentMethodSelected(PaymentMethod method) {
-  if (method == PaymentMethod.wallet || method == PaymentMethod.visa) {
+  if (method == PaymentMethod.wallet ||
+      method == PaymentMethod.visa ||
+      method == PaymentMethod.fawry) {
     unawaited(_selectDigitalPaymentAccount(method));
     return;
   }
@@ -170,10 +172,14 @@ Future<void> _selectDigitalPaymentAccount(PaymentMethod method) async {
     if (!mounted) return;
 
     if (accounts.isEmpty) {
+      final methodLabel = switch (method) {
+        PaymentMethod.wallet => 'محفظة',
+        PaymentMethod.visa => 'فيزا',
+        PaymentMethod.fawry => 'فوري',
+        _ => 'الدفع الإلكتروني',
+      };
       _showMessage(
-        method == PaymentMethod.wallet
-            ? 'لا توجد محفظة نشطة. اطلب من المدير إضافة حساب أولًا.'
-            : 'لا يوجد حساب فيزا نشط. اطلب من المدير إضافة حساب أولًا.',
+        'لا يوجد حساب $methodLabel نشط. اطلب من المدير إضافة حساب أولًا.',
         isError: true,
       );
       return;
@@ -217,6 +223,8 @@ Future<PaymentAccountInfo?> _choosePaymentAccount(
                       leading: Icon(
                         account.type == PaymentAccountType.wallet.name
                             ? Icons.wallet_outlined
+                            : account.type == PaymentAccountType.fawry.name
+                            ? Icons.qr_code_2_outlined
                             : Icons.credit_card,
                         color: AppColors.gold,
                       ),
@@ -722,7 +730,8 @@ cartItems: state.cartItems,
 },
 ),
 if (paymentMethod == PaymentMethod.wallet ||
-    paymentMethod == PaymentMethod.visa) ...[
+    paymentMethod == PaymentMethod.visa ||
+    paymentMethod == PaymentMethod.fawry) ...[
   const SizedBox(height: 8),
   Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -794,7 +803,8 @@ state.status ==
 CartStatus.loading ||
 _isSelectingPaymentAccount ||
 ((paymentMethod == PaymentMethod.wallet ||
-        paymentMethod == PaymentMethod.visa) &&
+        paymentMethod == PaymentMethod.visa ||
+        paymentMethod == PaymentMethod.fawry) &&
     _selectedPaymentAccount == null) ||
 paymentMethod ==
 PaymentMethod.credit

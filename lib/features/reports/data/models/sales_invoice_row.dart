@@ -1,4 +1,4 @@
-enum PaymentMethod { cash, visa, credit, wallet }
+enum PaymentMethod { cash, visa, credit, wallet, fawry }
 
 enum InvoiceStatus { completed, cancelled }
 
