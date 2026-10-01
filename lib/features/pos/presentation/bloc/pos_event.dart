@@ -83,11 +83,17 @@ class CheckoutCart extends CartEvent {
   final String paymentMethod;
   final double? paidAmount;
   final int? paymentAccountId;
+  final int? customerId;
+  final String? newCustomerName;
+  final String? newCustomerPhone;
 
   const CheckoutCart({
     required this.paymentMethod,
     this.paidAmount,
     this.paymentAccountId,
+    this.customerId,
+    this.newCustomerName,
+    this.newCustomerPhone,
   });
 
   @override
@@ -95,6 +101,9 @@ class CheckoutCart extends CartEvent {
     paymentMethod,
     paidAmount,
     paymentAccountId,
+    customerId,
+    newCustomerName,
+    newCustomerPhone,
   ];
 }
 

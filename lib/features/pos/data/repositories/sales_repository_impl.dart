@@ -76,6 +76,9 @@ class SalesRepositoryImpl implements SalesRepository {
     required String paymentMethod,
     double? paidAmount,
     int? paymentAccountId,
+    int? customerId,
+    String? newCustomerName,
+    String? newCustomerPhone,
   }) async {
     if (cartItems.isEmpty) {
       throw Exception('لا يمكن تنفيذ بيع بدون منتجات');
@@ -88,6 +91,41 @@ class SalesRepositoryImpl implements SalesRepository {
 
     final netAmount = subtotal + tax - discount;
     final paid = paidAmount ?? netAmount;
+    final isCredit = paymentMethod == 'credit';
+    final hasNewCustomerData =
+        newCustomerName != null || newCustomerPhone != null;
+
+    if (isCredit) {
+      if (customerId == null &&
+          (newCustomerName == null || newCustomerPhone == null)) {
+        throw StateError('اختر حساب عميل سابق أو أدخل بيانات عميل جديد');
+      }
+      if (customerId != null && hasNewCustomerData) {
+        throw StateError(
+          'لا يمكن اختيار حساب سابق وإرسال بيانات حساب جديد معًا',
+        );
+      }
+      if (!netAmount.isFinite ||
+          !paid.isFinite ||
+          netAmount <= 0 ||
+          paid < 0 ||
+          paid > netAmount) {
+        throw StateError('راجع إجمالي الفاتورة والمبلغ المدفوع للآجل');
+      }
+      if (customerId == null) {
+        final name = newCustomerName!.trim();
+        final phone = newCustomerPhone!.trim();
+        if (name.length < 2) {
+          throw StateError('اسم العميل يجب أن يكون حرفين على الأقل');
+        }
+        if (_normalizePhone(phone).length < 10) {
+          throw StateError('رقم تليفون العميل غير صحيح');
+        }
+      }
+    } else if (customerId != null || hasNewCustomerData) {
+      throw StateError('بيانات حساب العميل مطلوبة لفواتير الآجل فقط');
+    }
+
     final requiresAccount =
         paymentMethod == 'wallet' || paymentMethod == 'visa';
 
@@ -107,7 +145,52 @@ class SalesRepositoryImpl implements SalesRepository {
     final invoiceNumber =
         'INV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
 
+    final remaining =
+        (netAmount - paid).clamp(0.0, double.infinity).toDouble();
+    final invoiceStatus = !isCredit
+        ? 'completed'
+        : remaining <= 0.01
+        ? 'paid'
+        : paid > 0.01
+        ? 'partial'
+        : 'unpaid';
+
     return _db.transaction(() async {
+      int? invoiceCustomerId;
+      var existingCustomerDebt = 0.0;
+      if (isCredit) {
+        if (customerId != null) {
+          final customer = await (_db.select(_db.customers)
+                ..where((row) => row.id.equals(customerId)))
+              .getSingleOrNull();
+          if (customer == null) {
+            throw StateError('حساب العميل المحدد لم يعد موجودًا');
+          }
+          invoiceCustomerId = customer.id;
+          existingCustomerDebt = customer.totalDebt;
+        } else {
+          final name = newCustomerName!.trim();
+          final phone = newCustomerPhone!.trim();
+          final normalizedPhone = _normalizePhone(phone);
+          final customers = await _db.select(_db.customers).get();
+          if (customers.any(
+            (customer) =>
+                _normalizePhone(customer.phone) == normalizedPhone,
+          )) {
+            throw StateError(
+              'رقم التليفون مسجل لحساب آجل سابق؛ اختر حساب العميل الموجود',
+            );
+          }
+          invoiceCustomerId = await _db.into(_db.customers).insert(
+                CustomersCompanion(
+                  name: Value(name),
+                  phone: Value(phone),
+                  totalDebt: const Value(0),
+                ),
+              );
+        }
+      }
+
       final paymentAccount = paymentAccountId == null
           ? null
           : await (_db.select(_db.paymentAccounts)
@@ -152,18 +235,30 @@ class SalesRepositoryImpl implements SalesRepository {
 
       final invoiceId = await _db.into(_db.invoices).insert(
         InvoicesCompanion.insert(
-          invoiceNumber: invoiceNumber,
-          userId: userId,
-          totalAmount: subtotal,
+            invoiceNumber: invoiceNumber,
+            userId: userId,
+            customerId: Value(invoiceCustomerId),
+            totalAmount: subtotal,
           discount: Value(discount),
           tax: Value(tax),
           netAmount: netAmount,
           paidAmount: Value(paid),
-          remainingAmount: Value(netAmount - paid),
-          paymentMethod: Value(paymentMethod),
-          profit: Value(totalProfit),
-        ),
-      );
+            remainingAmount: Value(remaining),
+            paymentMethod: Value(paymentMethod),
+            status: Value(invoiceStatus),
+            profit: Value(totalProfit),
+          ),
+        );
+
+      if (invoiceCustomerId != null) {
+        await (_db.update(_db.customers)
+              ..where((customer) => customer.id.equals(invoiceCustomerId!)))
+            .write(
+          CustomersCompanion(
+            totalDebt: Value(existingCustomerDebt + remaining),
+          ),
+        );
+      }
 
       if (paymentAccount != null) {
         await _db.into(_db.paymentAccountTransactions).insert(
@@ -325,6 +420,24 @@ class SalesRepositoryImpl implements SalesRepository {
         );
       }
 
+      if (targetInvoice.customerId != null &&
+          targetInvoice.remainingAmount > 0) {
+        final customer = await (_db.select(_db.customers)
+              ..where((row) => row.id.equals(targetInvoice.customerId!)))
+            .getSingleOrNull();
+        if (customer != null) {
+          final updatedDebt = (customer.totalDebt -
+                  targetInvoice.remainingAmount)
+              .clamp(0.0, double.infinity)
+              .toDouble();
+          await (_db.update(_db.customers)
+                ..where((row) => row.id.equals(customer.id)))
+              .write(
+            CustomersCompanion(totalDebt: Value(updatedDebt)),
+          );
+        }
+      }
+
       final accountReceipts = await (_db.select(
         _db.paymentAccountTransactions,
       )..where(
@@ -361,4 +474,7 @@ class SalesRepositoryImpl implements SalesRepository {
       return targetInvoice.id;
     });
   }
+
+  String _normalizePhone(String? phone) =>
+      (phone ?? '').replaceAll(RegExp(r'\D'), '');
 }

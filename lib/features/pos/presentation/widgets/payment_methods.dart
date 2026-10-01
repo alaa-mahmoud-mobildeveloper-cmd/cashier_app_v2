@@ -1,14 +1,19 @@
-import 'package:cashier_app_v2/features/pos/presentation/widgets/PaymentForm.dart';
+import 'package:cashier_app_v2/features/pos/presentation/widgets/payment_form.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../domain/entities/product.dart';
 
-
 class PaymentMethods extends StatelessWidget {
   final PaymentMethod selected;
   final ValueChanged<PaymentMethod> onSelected;
-  final void Function(String name, String phone, double amount)? onDeferredConfirm;
+  final void Function(
+    int? customerId,
+    String name,
+    String phone,
+    double amount,
+  )?
+  onDeferredConfirm;
 
   const PaymentMethods({
     super.key,
@@ -22,16 +27,15 @@ class PaymentMethods extends StatelessWidget {
       PaymentForm.show(
         context,
         methodLabel: method.label,
-        onConfirm: (name, phone, amount) {
+        onConfirm: (customerId, name, phone, amount) {
           onSelected(method);
-          onDeferredConfirm?.call(name, phone, amount);
+          onDeferredConfirm?.call(customerId, name, phone, amount);
         },
       );
     } else {
       onSelected(method);
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -60,14 +64,18 @@ class PaymentMethods extends StatelessWidget {
                     Icon(
                       method.icon,
                       size: 18,
-                      color: isSelected ? AppColors.success : AppColors.textSecondary,
+                      color: isSelected
+                          ? AppColors.success
+                          : AppColors.textSecondary,
                     ),
                     const SizedBox(height: 3),
                     Text(
                       method.label,
                       style: TextStyle(
                         fontSize: 10,
-                        color: isSelected ? AppColors.success : AppColors.textSecondary,
+                        color: isSelected
+                            ? AppColors.success
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ],

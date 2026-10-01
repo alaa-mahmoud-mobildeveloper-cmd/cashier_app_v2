@@ -3,7 +3,9 @@ import 'dart:async';
 
 import 'package:cashier_app_v2/core/database/app_database.dart';
 import 'package:cashier_app_v2/di.dart';
-import 'package:cashier_app_v2/features/pos/domain/entities/product.dart' hide Product;
+import 'package:cashier_app_v2/features/pos/data/models/cart_item_model.dart';
+import 'package:cashier_app_v2/features/pos/domain/entities/product.dart'
+    hide Product, CartItem;
 import 'package:cashier_app_v2/features/pos/domain/repositories/sales_repository.dart';
 import 'package:cashier_app_v2/features/pos/presentation/bloc/pos_bloc.dart';
 import 'package:cashier_app_v2/features/pos/presentation/bloc/pos_event.dart';
@@ -15,7 +17,6 @@ import 'package:cashier_app_v2/features/pos/presentation/widgets/return_invoice_
 import 'package:cashier_app_v2/features/pos/presentation/widgets/simple_calculator_dialog.dart';
 import 'package:cashier_app_v2/features/payment_accounts/data/payment_account_repository.dart';
 import 'package:cashier_app_v2/features/payment_accounts/domain/payment_account.dart';
-import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -60,8 +61,6 @@ late final PaymentAccountRepository _paymentAccountRepository;
 bool _isSelectingPaymentAccount = false;
 
 String category = 'الكل';
-
-double? deferredPaidAmount;
 
 static const categories = [
 'الكل',
@@ -283,218 +282,45 @@ searchController.clear();
 _requestBarcodeFocus();
 }
 
-Future<void> _saveCreditOrder({
+void _saveCreditOrder({
+required int? customerId,
 required String customerName,
 required String customerPhone,
 required double paidAmount,
 required double totalAmount,
-required List<dynamic> cartItems,
-}) async {
+required List<CartItem> cartItems,
+}) {
 if (cartItems.isEmpty) {
-_showMessage(
-'السلة فارغة',
-isError: true,
-);
-return;
+  _showMessage('السلة فارغة', isError: true);
+  return;
 }
 
-final name = customerName.trim();
-final phone = customerPhone.trim();
-
-if (name.isEmpty) {
-_showMessage(
-'من فضلك أدخل اسم العميل',
-isError: true,
-);
-return;
+if (customerId == null && customerName.trim().isEmpty) {
+  _showMessage('من فضلك أدخل اسم العميل', isError: true);
+  return;
 }
-
-if (phone.isEmpty) {
-_showMessage(
-'من فضلك أدخل رقم هاتف العميل',
-isError: true,
-);
-return;
+if (customerId == null && customerPhone.trim().isEmpty) {
+  _showMessage('من فضلك أدخل رقم هاتف العميل', isError: true);
+  return;
 }
-
 if (totalAmount <= 0) {
-_showMessage(
-'إجمالي الفاتورة غير صحيح',
-isError: true,
-);
-return;
+  _showMessage('إجمالي الفاتورة غير صحيح', isError: true);
+  return;
 }
-
-if (paidAmount < 0) {
-_showMessage(
-'مبلغ التحصيل غير صحيح',
-isError: true,
-);
-return;
+if (!paidAmount.isFinite || paidAmount < 0 || paidAmount > totalAmount) {
+  _showMessage('راجع المبلغ المدفوع والمتبقي للفاتورة', isError: true);
+  return;
 }
-
-if (paidAmount > totalAmount) {
-_showMessage(
-'مبلغ التحصيل لا يمكن أن يكون أكبر من إجمالي الفاتورة',
-isError: true,
-);
-return;
-}
-
-try {
-final database = getIt<AppDatabase>();
-
-await database.transaction(() async {
-int customerId;
-double oldCustomerDebt = 0;
-
-final existingCustomer =
-await (database.select(database.customers)
-..where((tbl) => tbl.phone.equals(phone)))
-    .getSingleOrNull();
-
-if (existingCustomer != null) {
-customerId = existingCustomer.id;
-oldCustomerDebt = existingCustomer.totalDebt;
-
-await (database.update(database.customers)
-..where((tbl) => tbl.id.equals(customerId)))
-    .write(
-CustomersCompanion(
-name: drift.Value(name),
-),
-);
-} else {
-customerId = await database.into(database.customers).insert(
-CustomersCompanion(
-name: drift.Value(name),
-phone: drift.Value(phone),
-totalDebt: const drift.Value(0),
-),
-);
-}
-
-final remaining =
-(totalAmount - paidAmount).clamp(0.0, double.infinity).toDouble();
-
-final status = _resolveInvoiceStatus(
-paidAmount: paidAmount,
-remainingAmount: remaining,
-);
-
-final invoiceNumber =
-'INV-${DateTime.now().millisecondsSinceEpoch}';
-
-double totalProfit = 0;
-
-for (final item in cartItems) {
-final product = item.product;
-final quantity = item.quantity as int;
-final purchasePrice =
-(product.purchasePrice as num).toDouble();
-final unitPrice = (product.price as num).toDouble();
-
-totalProfit +=
-(unitPrice - purchasePrice) * quantity;
-}
-
-final invoiceId = await database.into(database.invoices).insert(
-InvoicesCompanion(
-invoiceNumber: drift.Value(invoiceNumber),
-userId: const drift.Value(1),
-customerId: drift.Value(customerId),
-totalAmount: drift.Value(totalAmount),
-discount: const drift.Value(0),
-tax: const drift.Value(0),
-netAmount: drift.Value(totalAmount),
-profit: drift.Value(totalProfit),
-paidAmount: drift.Value(paidAmount),
-remainingAmount: drift.Value(remaining),
-paymentMethod: const drift.Value('credit'),
-status: drift.Value(status),
-createdAt: drift.Value(DateTime.now()),
-),
-);
-
-for (final item in cartItems) {
-final product = item.product;
-final quantity = item.quantity as int;
-final purchasePrice =
-(product.purchasePrice as num).toDouble();
-final unitPrice =
-(product.price as num).toDouble();
-final totalPrice = unitPrice * quantity;
-final profit =
-(unitPrice - purchasePrice) * quantity;
-
-await database.into(database.invoiceItems).insert(
-InvoiceItemsCompanion(
-invoiceId: drift.Value(invoiceId),
-productId: drift.Value(product.id),
-productName: drift.Value(product.name),
-barcode: drift.Value(product.barcode),
-category: drift.Value(product.category),
-unit: drift.Value(product.unit),
-purchasePrice: drift.Value(purchasePrice),
-unitPrice: drift.Value(unitPrice),
-quantity: drift.Value(quantity),
-totalPrice: drift.Value(totalPrice),
-profit: drift.Value(profit),
-),
-);
-}
-
-final newCustomerDebt =
-oldCustomerDebt + remaining;
-
-await (database.update(database.customers)
-..where((tbl) => tbl.id.equals(customerId)))
-    .write(
-CustomersCompanion(
-totalDebt: drift.Value(newCustomerDebt),
-),
-);
-});
-
-if (!mounted) return;
 
 context.read<CartBloc>().add(
-const ClearCart(),
+  CheckoutCart(
+    paymentMethod: PaymentMethod.credit.name,
+    paidAmount: paidAmount,
+    customerId: customerId,
+    newCustomerName: customerId == null ? customerName.trim() : null,
+    newCustomerPhone: customerId == null ? customerPhone.trim() : null,
+  ),
 );
- setState(() {
-   discountController.text = '0';
-   receivedController.text = '0';
-   paymentMethod = PaymentMethod.cash;
-   _selectedPaymentAccount = null;
-   deferredPaidAmount = null;
- });
-
-_showMessage(
-'تم تسجيل الفاتورة الآجلة بنجاح',
-);
-} catch (e) {
-if (!mounted) return;
-
-_showMessage(
-'حدث خطأ أثناء حفظ الآجل: $e',
-isError: true,
-);
-}
-}
-
-String _resolveInvoiceStatus({
-required double paidAmount,
-required double remainingAmount,
-}) {
-if (remainingAmount <= 0.01) {
-return 'paid';
-}
-
-if (paidAmount > 0.01) {
-return 'partial';
-}
-
-return 'unpaid';
 }
 
 double _change(double total) {
@@ -599,9 +425,8 @@ discountController.text = '0';
 receivedController.text = '0';
 
 setState(() {
-paymentMethod = PaymentMethod.cash;
-_selectedPaymentAccount = null;
-deferredPaidAmount = null;
+ paymentMethod = PaymentMethod.cash;
+ _selectedPaymentAccount = null;
 });
 
 _showMessage(
@@ -879,15 +704,15 @@ PaymentMethods(
 selected: paymentMethod,
 onSelected: _handlePaymentMethodSelected,
 onDeferredConfirm:
-(name, phone, amount) {
+(customerId, name, phone, amount) {
 setState(() {
 paymentMethod =
 PaymentMethod.credit;
 _selectedPaymentAccount = null;
-deferredPaidAmount = amount;
 });
 
 _saveCreditOrder(
+customerId: customerId,
 customerName: name,
 customerPhone: phone,
 paidAmount: amount,

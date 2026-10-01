@@ -291,6 +291,9 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         paymentMethod: event.paymentMethod,
         paidAmount: event.paidAmount,
         paymentAccountId: event.paymentAccountId,
+        customerId: event.customerId,
+        newCustomerName: event.newCustomerName,
+        newCustomerPhone: event.newCustomerPhone,
       );
 
       final products = await _salesRepository.getProductsPage(
@@ -392,8 +395,4 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     );
   }
 
-  @override
-  Future<void> close() {
-    return super.close();
-  }
 }
