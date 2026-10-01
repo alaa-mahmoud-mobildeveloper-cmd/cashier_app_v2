@@ -15,7 +15,7 @@ void main() {
           allowedRoutes: RoleAccessPolicy.routesForRole(role),
           userName: 'Test User',
           userRole: role,
-          onNavigate: (_) {},
+          onNavigate: (_) {}, onLogout: () {},
         ),
       ),
     );

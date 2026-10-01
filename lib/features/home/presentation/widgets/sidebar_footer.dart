@@ -7,13 +7,13 @@ import '../../../../core/constants/app_colors.dart';
 class SidebarFooter extends StatelessWidget {
   final String userName;
   final String userRole;
-  final VoidCallback? onHelpTap;
+  final VoidCallback? onLogout;
 
   const SidebarFooter({
     super.key,
     required this.userName,
     required this.userRole,
-    this.onHelpTap,
+   required this.onLogout,
   });
 
   @override
@@ -75,7 +75,7 @@ class SidebarFooter extends StatelessWidget {
           Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: onHelpTap,
+              onTap: onLogout,
               customBorder: const CircleBorder(),
               borderRadius: BorderRadius.circular(30),
               child: Ink(
@@ -89,7 +89,7 @@ class SidebarFooter extends StatelessWidget {
                   ),
                 ),
                 child: const Icon(
-                  Icons.help_outline,
+                  Icons.logout_outlined,
                   size: 17,
                   color: AppColors.textSecondary,
                 ),

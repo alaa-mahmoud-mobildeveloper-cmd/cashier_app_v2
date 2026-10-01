@@ -32,7 +32,7 @@ class DebtLoaded extends DebtState {
   const DebtLoaded({
     required this.invoices,
     this.searchQuery = '',
-    this.selectedPaymentFilter = 'الاجل',
+    this.selectedPaymentFilter = 'آجل',
     this.selectedStatusFilter = 'الكل',
   });
 
@@ -47,7 +47,7 @@ class DebtLoaded extends DebtState {
               invoice.phone.toLowerCase().contains(query);
 
       final matchesPayment =
-          selectedPaymentFilter == 'الكل' ||
+          selectedPaymentFilter == 'آجل' ||
               (selectedPaymentFilter == 'نقدي' &&
                   invoice.paymentMethod == 'cash') ||
               (selectedPaymentFilter == 'آجل' &&

@@ -14,6 +14,7 @@ class SidebarMenu extends StatelessWidget {
   final List<String> allowedRoutes;
   final String userName;
   final String userRole;
+  final VoidCallback? onLogout;
   final ValueChanged<String> onNavigate;
 
   const SidebarMenu({
@@ -22,6 +23,7 @@ class SidebarMenu extends StatelessWidget {
     required this.allowedRoutes,
     required this.userName,
     required this.userRole,
+    required this.onLogout,
     required this.onNavigate,
   });
 
@@ -57,7 +59,7 @@ class SidebarMenu extends StatelessWidget {
               ),
             ),
             const Divider(color: AppColors.border, height: 1),
-            SidebarFooter(userName: userName, userRole: userRole),
+            SidebarFooter(userName: userName, userRole: userRole, onLogout: onLogout,),
           ],
         ),
       ),

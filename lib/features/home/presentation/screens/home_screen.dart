@@ -123,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onNavigate: (route) {
         _onNavigate(route);
         Navigator.of(context).pop();
-      },
+      }, onLogout:  widget.onLogout,
     );
   }
 
@@ -147,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
             allowedRoutes: routes,
             userName: _session.currentFullName ?? 'المستخدم',
             userRole: _roleLabel,
-            onNavigate: _onNavigate,
+            onNavigate: _onNavigate, onLogout: widget.onLogout,
           ),
         if (isDesktop) const VerticalDivider(width: 1, color: Colors.white12),
         Expanded(

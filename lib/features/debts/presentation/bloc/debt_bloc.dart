@@ -20,7 +20,7 @@ class DebtBloc extends Bloc<DebtEvent, DebtState> {
 
   String _searchQuery = '';
 
-  String _selectedPaymentFilter = 'الكل';
+  String _selectedPaymentFilter = 'آجل';
 
   String _selectedStatusFilter = 'الكل';
 
