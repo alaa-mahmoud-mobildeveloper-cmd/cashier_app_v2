@@ -1,10 +1,12 @@
 enum PaymentAccountType {
   wallet,
-  visa;
+  visa,
+  fawry;
 
   String get label => switch (this) {
     PaymentAccountType.wallet => 'محفظة إلكترونية',
     PaymentAccountType.visa => 'فيزا',
+    PaymentAccountType.fawry => 'فوري',
   };
 }
 
@@ -25,9 +27,12 @@ class PaymentAccountInfo {
     required this.isActive,
   });
 
-  String get typeLabel => type == PaymentAccountType.wallet.name
-      ? PaymentAccountType.wallet.label
-      : PaymentAccountType.visa.label;
+  String get typeLabel => switch (type) {
+    'wallet' => PaymentAccountType.wallet.label,
+    'visa' => PaymentAccountType.visa.label,
+    'fawry' => PaymentAccountType.fawry.label,
+    _ => 'وسيلة دفع',
+  };
 
   String get displayLabel => [
     name,

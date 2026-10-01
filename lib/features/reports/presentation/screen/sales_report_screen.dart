@@ -435,6 +435,8 @@ class _SalesReportViewState extends State<_SalesReportView> {
         return PaymentMethod.credit;
       case 'wallet':
         return PaymentMethod.wallet;
+      case 'fawry':
+        return PaymentMethod.fawry;
       case 'cash':
       default:
         return PaymentMethod.cash;

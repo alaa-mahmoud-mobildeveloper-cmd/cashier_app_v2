@@ -127,13 +127,15 @@ class SalesRepositoryImpl implements SalesRepository {
     }
 
     final requiresAccount =
-        paymentMethod == 'wallet' || paymentMethod == 'visa';
+        paymentMethod == 'wallet' ||
+        paymentMethod == 'visa' ||
+        paymentMethod == 'fawry';
 
     if (requiresAccount != (paymentAccountId != null)) {
       throw StateError(
         requiresAccount
-            ? 'اختر حساب المحفظة أو الفيزا قبل إتمام البيع'
-            : 'طريقة الدفع المحددة لا تستخدم حساب محفظة أو فيزا',
+            ? 'اختر حساب الاستلام قبل إتمام البيع'
+            : 'طريقة الدفع المحددة لا تستخدم حساب استلام',
       );
     }
     if (requiresAccount && (paid <= 0 || paid > netAmount)) {

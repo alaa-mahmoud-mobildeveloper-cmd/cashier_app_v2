@@ -47,7 +47,7 @@ class _PaymentAccountsScreenState extends State<PaymentAccountsScreen> {
                     const SizedBox(width: 10),
                     const Expanded(
                       child: Text(
-                        'المحافظ والفيزا',
+                        'المحافظ والفيزا وفوري',
                         style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 22,
@@ -64,7 +64,7 @@ class _PaymentAccountsScreenState extends State<PaymentAccountsScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'سجّل الرصيد الحالي، وتابع تحصيلات الكاشير والإيداع والسحب.',
+                  'أدر حسابات المحافظ والفيزا وفوري، وتابع التحصيلات والحركات.',
                   style: TextStyle(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 16),
@@ -92,7 +92,7 @@ class _PaymentAccountsScreenState extends State<PaymentAccountsScreen> {
                       if (accounts.isEmpty) {
                         return const Center(
                           child: Text(
-                            'لا توجد حسابات بعد. أضف محفظة إلكترونية أو حساب فيزا للبدء.',
+                            'لا توجد حسابات بعد. أضف محفظة أو حساب فيزا أو فوري للبدء.',
                             textAlign: TextAlign.center,
                             style: TextStyle(color: AppColors.textSecondary),
                           ),
@@ -133,7 +133,11 @@ class _PaymentAccountsScreenState extends State<PaymentAccountsScreen> {
                 CircleAvatar(
                   backgroundColor: AppColors.goldSurface,
                   child: Icon(
-                    isWallet ? Icons.wallet_outlined : Icons.credit_card,
+                    isWallet
+                        ? Icons.wallet_outlined
+                        : account.type == PaymentAccountType.fawry.name
+                        ? Icons.qr_code_2_outlined
+                        : Icons.credit_card,
                     color: AppColors.gold,
                   ),
                 ),
@@ -517,6 +521,8 @@ class _AccountFormDialogState extends State<_AccountFormDialog> {
   @override
   Widget build(BuildContext context) {
     final isWallet = _type == PaymentAccountType.wallet.name;
+    final isVisa = _type == PaymentAccountType.visa.name;
+    final isFawry = _type == PaymentAccountType.fawry.name;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: AlertDialog(
@@ -537,6 +543,7 @@ class _AccountFormDialogState extends State<_AccountFormDialog> {
                       child: Text('محفظة إلكترونية'),
                     ),
                     DropdownMenuItem(value: 'visa', child: Text('فيزا')),
+                    DropdownMenuItem(value: 'fawry', child: Text('فوري')),
                   ],
                   onChanged: (value) {
                     if (value != null) setState(() => _type = value);
@@ -546,9 +553,13 @@ class _AccountFormDialogState extends State<_AccountFormDialog> {
                 TextFormField(
                   controller: _nameController,
                   maxLength: 80,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'اسم الحساب',
-                    hintText: 'مثال: محفظة الفرع أو جهاز فيزا 1',
+                    hintText: isWallet
+                        ? 'مثال: محفظة الفرع'
+                        : isVisa
+                        ? 'مثال: جهاز فيزا 1'
+                        : 'مثال: حساب فوري الفرع',
                   ),
                   validator: (value) => value == null || value.trim().length < 2
                       ? 'اكتب اسمًا من حرفين على الأقل'
@@ -559,6 +570,8 @@ class _AccountFormDialogState extends State<_AccountFormDialog> {
                   decoration: InputDecoration(
                     labelText: isWallet
                         ? 'شركة المحفظة (اختياري)'
+                        : isFawry
+                        ? 'مزود فوري/الفرع (اختياري)'
                         : 'البنك/مزود الخدمة (اختياري)',
                   ),
                 ),
@@ -567,16 +580,18 @@ class _AccountFormDialogState extends State<_AccountFormDialog> {
                   decoration: InputDecoration(
                     labelText: isWallet
                         ? 'رقم هاتف المحفظة (اختياري)'
-                        : 'اسم جهاز نقاط البيع (اختياري)',
-                    helperText: isWallet
-                        ? null
-                        : 'لا تدخل أي بيانات بطاقة مثل الرقم أو رمز CVV.',
+                        : isVisa
+                        ? 'اسم جهاز نقاط البيع (اختياري)'
+                        : 'معرّف التاجر أو الفرع (اختياري)',
+                    helperText: isVisa
+                        ? 'لا تدخل أي بيانات بطاقة مثل الرقم أو رمز CVV.'
+                        : null,
                   ),
                   keyboardType: isWallet
                       ? TextInputType.phone
                       : TextInputType.text,
                   validator: (value) {
-                    if (isWallet) return null;
+                    if (!isVisa) return null;
                     final digits = value?.replaceAll(RegExp(r'\D'), '') ?? '';
                     if (digits.length >= 13 && digits.length <= 19) {
                       return 'اكتب اسم الجهاز فقط، ولا تدخل رقم البطاقة';

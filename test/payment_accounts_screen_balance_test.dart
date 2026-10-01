@@ -79,4 +79,60 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1));
     },
   );
+
+  testWidgets('offers deposit and withdrawal on every wallet account', (
+    tester,
+  ) async {
+    await database
+        .into(database.paymentAccounts)
+        .insert(
+          PaymentAccountsCompanion.insert(type: 'wallet', name: 'محفظة أولى'),
+        );
+    await database
+        .into(database.paymentAccounts)
+        .insert(
+          PaymentAccountsCompanion.insert(type: 'wallet', name: 'محفظة ثانية'),
+        );
+
+    await tester.pumpWidget(const MaterialApp(home: PaymentAccountsScreen()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('إيداع'), findsNWidgets(2));
+    expect(find.text('سحب'), findsNWidgets(2));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('adds a Fawry merchant account from the account-type dropdown', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: PaymentAccountsScreen()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('إضافة حساب'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('فوري').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('الرصيد الموجود حاليًا في المحفظة'), findsNothing);
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), 'حساب فوري الفرع');
+    await tester.enterText(fields.at(1), 'فوري');
+    await tester.enterText(fields.at(2), '1234567890123');
+    await tester.tap(find.text('حفظ'));
+    await tester.pumpAndSettle();
+
+    final account = await database.select(database.paymentAccounts).getSingle();
+    expect(account.type, 'fawry');
+    expect(account.reference, '1234567890123');
+    expect(find.textContaining('فوري'), findsWidgets);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
 }
