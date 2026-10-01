@@ -235,6 +235,7 @@ class _PaymentFormState extends State<PaymentForm> {
               if (_isCreatingCustomer) ...[
                 TextFormField(
                   controller: _nameController,
+                  onTapOutside: (_) {},
                   decoration: const InputDecoration(labelText: 'اسم العميل'),
                   validator: (value) => value == null || value.trim().isEmpty
                       ? 'من فضلك أدخل اسم العميل'
@@ -243,6 +244,7 @@ class _PaymentFormState extends State<PaymentForm> {
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _phoneController,
+                  onTapOutside: (_) {},
                   keyboardType: TextInputType.phone,
                   decoration: const InputDecoration(labelText: 'رقم التليفون'),
                   validator: _validateNewPhone,
@@ -251,6 +253,7 @@ class _PaymentFormState extends State<PaymentForm> {
               const SizedBox(height: 8),
               TextFormField(
                 controller: _amountController,
+                onTapOutside: (_) {},
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
