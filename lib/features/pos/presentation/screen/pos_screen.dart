@@ -26,6 +26,8 @@ import '../widgets/category_tabs.dart';
 import '../widgets/pos_header.dart';
 import '../widgets/products_grid.dart';
 
+void _keepPosInputFocus(PointerDownEvent event) {}
+
 class PosScreen extends StatelessWidget {
 const PosScreen({super.key});
 
@@ -404,9 +406,7 @@ isError ? AppColors.danger : AppColors.success,
 
 @override
 Widget build(BuildContext context) {
-return PosSearchFocusGuard(
-searchFocusNode: _barcodeFocusNode,
-child: Directionality(
+return Directionality(
 textDirection: TextDirection.rtl,
 child: Scaffold(
 backgroundColor: AppColors.background,
@@ -520,7 +520,6 @@ child: productsPanel,
 },
 );
 },
-),
 ),
 ),
 ),
@@ -639,6 +638,7 @@ Text(
 const SizedBox(height: 8),
 TextField(
 controller: discountController,
+onTapOutside: (_) {},
 onChanged: (value) {
 context.read<CartBloc>().add(
 ApplyDiscount(
@@ -756,6 +756,7 @@ PaymentMethod.cash) ...[
 const SizedBox(height: 10),
 TextField(
 controller: receivedController,
+onTapOutside: (_) {},
 onChanged: (_) {
 setState(() {});
 },
@@ -774,6 +775,7 @@ isDense: true,
 const SizedBox(height: 10),
 const TextField(
 maxLines: 1,
+onTapOutside: _keepPosInputFocus,
 decoration: InputDecoration(
 hintText: 'ملاحظة (اختياري)',
 isDense: true,

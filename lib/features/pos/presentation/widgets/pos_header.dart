@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class PosHeader extends StatelessWidget {
@@ -29,6 +28,7 @@ class PosHeader extends StatelessWidget {
               controller: controller,
               focusNode: focusNode,
               autofocus: true,
+              onTapOutside: (_) {},
               onChanged: onSearch,
               onSubmitted: (value) {
                 final code = value.trim();
@@ -65,53 +65,6 @@ class PosHeader extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Keeps cashier search ready for non-input taps without stealing focus from
-/// another editable field.
-class PosSearchFocusGuard extends StatefulWidget {
-  final FocusNode searchFocusNode;
-  final Widget child;
-
-  const PosSearchFocusGuard({
-    super.key,
-    required this.searchFocusNode,
-    required this.child,
-  });
-
-  @override
-  State<PosSearchFocusGuard> createState() => _PosSearchFocusGuardState();
-}
-
-class _PosSearchFocusGuardState extends State<PosSearchFocusGuard> {
-  final _listenerKey = GlobalKey();
-
-  void _handlePointerDown(PointerDownEvent event) {
-    final renderObject = _listenerKey.currentContext?.findRenderObject();
-    if (renderObject is RenderBox) {
-      final hitTestResult = BoxHitTestResult();
-      final localPosition = renderObject.globalToLocal(event.position);
-      renderObject.hitTest(hitTestResult, position: localPosition);
-      final tappedEditableText = hitTestResult.path.any(
-        (entry) => entry.target is RenderEditable,
-      );
-      if (tappedEditableText) return;
-    }
-
-    if (widget.searchFocusNode.context != null) {
-      widget.searchFocusNode.requestFocus();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Listener(
-      key: _listenerKey,
-      behavior: HitTestBehavior.translucent,
-      onPointerDown: _handlePointerDown,
-      child: widget.child,
     );
   }
 }

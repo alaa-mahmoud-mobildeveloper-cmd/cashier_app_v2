@@ -1,10 +1,11 @@
 import 'package:cashier_app_v2/features/pos/presentation/widgets/pos_header.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets(
-    'keeps search focused on blank taps but respects another text field',
+    'retains the last input focus on outside taps and switches only to another input',
     (tester) async {
       final searchController = TextEditingController();
       final searchFocusNode = FocusNode();
@@ -13,28 +14,26 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PosSearchFocusGuard(
-              searchFocusNode: searchFocusNode,
-              child: Column(
-                children: [
-                  PosHeader(
-                    controller: searchController,
-                    focusNode: searchFocusNode,
-                    onSearch: (_) {},
+            body: Column(
+              children: [
+                PosHeader(
+                  controller: searchController,
+                  focusNode: searchFocusNode,
+                  onSearch: (_) {},
+                ),
+                TextField(
+                  key: const ValueKey('other-input'),
+                  focusNode: otherFocusNode,
+                  onTapOutside: (_) {},
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    key: const ValueKey('blank-area'),
+                    behavior: HitTestBehavior.opaque,
+                    child: const SizedBox.expand(),
                   ),
-                  TextField(
-                    key: const ValueKey('other-input'),
-                    focusNode: otherFocusNode,
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      key: const ValueKey('blank-area'),
-                      behavior: HitTestBehavior.opaque,
-                      child: const SizedBox.expand(),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -43,15 +42,28 @@ void main() {
 
       expect(searchFocusNode.hasFocus, isTrue);
 
-      await tester.tap(find.byKey(const ValueKey('other-input')));
+      await tester.tap(
+        find.byKey(const ValueKey('blank-area')),
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+      expect(searchFocusNode.hasFocus, isTrue);
+
+      await tester.tap(
+        find.byKey(const ValueKey('other-input')),
+        kind: PointerDeviceKind.mouse,
+      );
       await tester.pumpAndSettle();
       expect(otherFocusNode.hasFocus, isTrue);
       expect(searchFocusNode.hasFocus, isFalse);
 
-      await tester.tap(find.byKey(const ValueKey('blank-area')));
+      await tester.tap(
+        find.byKey(const ValueKey('blank-area')),
+        kind: PointerDeviceKind.mouse,
+      );
       await tester.pumpAndSettle();
-      expect(searchFocusNode.hasFocus, isTrue);
-      expect(otherFocusNode.hasFocus, isFalse);
+      expect(otherFocusNode.hasFocus, isTrue);
+      expect(searchFocusNode.hasFocus, isFalse);
 
       await tester.pumpWidget(const SizedBox.shrink());
       searchFocusNode.dispose();
