@@ -1,8 +1,16 @@
 import 'package:cashier_app_v2/core/constants/app_colors.dart';
+import 'package:cashier_app_v2/features/auth/data/repositories/auth_repository.dart';
 import 'package:flutter/material.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final AuthRepository authRepository;
+  final VoidCallback onAuthenticated;
+
+  const LoginScreen({
+    super.key,
+    required this.authRepository,
+    required this.onAuthenticated,
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -10,16 +18,15 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
-  bool _rememberMe = false;
   bool _isLoading = false;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -28,12 +35,32 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-
-    // TODO: استدعاء منطق تسجيل الدخول الفعلي هنا
-    await Future.delayed(const Duration(seconds: 1));
-
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+    try {
+      final user = await widget.authRepository.signIn(
+        username: _usernameController.text,
+        password: _passwordController.text,
+      );
+      if (!mounted) return;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('اسم المستخدم أو كلمة المرور غير صحيحة'),
+          ),
+        );
+        return;
+      }
+      widget.onAuthenticated();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تعذر تسجيل الدخول؛ تحقق من قاعدة البيانات'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -48,9 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
               return SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight,
-                  ),
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
                   child: IntrinsicHeight(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -128,14 +153,16 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _fieldLabel('البريد الإلكتروني'),
+          _fieldLabel('اسم المستخدم'),
           const SizedBox(height: 8),
           TextFormField(
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
+            controller: _usernameController,
+            keyboardType: TextInputType.text,
+            textInputAction: TextInputAction.next,
+            autocorrect: false,
             style: const TextStyle(color: AppColors.textPrimary),
             decoration: const InputDecoration(
-              hintText: 'example@email.com',
+              hintText: 'أدخل اسم المستخدم',
               prefixIcon: Icon(
                 Icons.mail_outline_rounded,
                 color: AppColors.textHint,
@@ -144,10 +171,10 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'من فضلك أدخل البريد الإلكتروني';
+                return 'من فضلك أدخل اسم المستخدم';
               }
-              if (!value.contains('@')) {
-                return 'البريد الإلكتروني غير صالح';
+              if (value.trim().length < 3 || value.trim().length > 50) {
+                return 'اسم المستخدم غير صالح';
               }
               return null;
             },
@@ -158,6 +185,8 @@ class _LoginScreenState extends State<LoginScreen> {
           TextFormField(
             controller: _passwordController,
             obscureText: _obscurePassword,
+            textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) => _handleLogin(),
             style: const TextStyle(color: AppColors.textPrimary),
             decoration: InputDecoration(
               hintText: '••••••••',
@@ -183,50 +212,19 @@ class _LoginScreenState extends State<LoginScreen> {
               if (value == null || value.isEmpty) {
                 return 'من فضلك أدخل كلمة المرور';
               }
-              if (value.length < 6) {
-                return 'كلمة المرور يجب ألا تقل عن 6 أحرف';
+              if (value.length > 256) {
+                return 'كلمة المرور طويلة جدًا';
               }
               return null;
             },
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              SizedBox(
-                width: 22,
-                height: 22,
-                child: Checkbox(
-                  value: _rememberMe,
-                  onChanged: (value) {
-                    setState(() => _rememberMe = value ?? false);
-                  },
-                  activeColor: AppColors.gold,
-                  checkColor: Colors.black,
-                  side: const BorderSide(color: AppColors.border),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'تذكرني',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
-              ),
-              const Spacer(),
-              TextButton(
-                onPressed: () {
-                  // TODO: نسيت كلمة المرور
-                },
-                child: const Text(
-                  'نسيت كلمة المرور؟',
-                  style: TextStyle(fontSize: 13),
-                ),
-              ),
-            ],
+          const Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              'لإعادة تعيين كلمة المرور، تواصل مع مدير النظام.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
           ),
           const SizedBox(height: 12),
           SizedBox(
@@ -235,17 +233,14 @@ class _LoginScreenState extends State<LoginScreen> {
               onPressed: _isLoading ? null : _handleLogin,
               child: _isLoading
                   ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.4,
-                  valueColor: AlwaysStoppedAnimation(Colors.black),
-                ),
-              )
-                  : const Text(
-                'تسجيل الدخول',
-                style: TextStyle(fontSize: 15),
-              ),
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.4,
+                        valueColor: AlwaysStoppedAnimation(Colors.black),
+                      ),
+                    )
+                  : const Text('تسجيل الدخول', style: TextStyle(fontSize: 15)),
             ),
           ),
         ],
@@ -265,23 +260,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildFooter() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Text(
-          'ليس لديك حساب؟',
-          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-        ),
-        TextButton(
-          onPressed: () {
-            // TODO: الانتقال لصفحة إنشاء حساب
-          },
-          child: const Text(
-            'إنشاء حساب جديد',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-          ),
-        ),
-      ],
+    return const Text(
+      'يتم إعداد حساب المدير عند أول تشغيل فقط.',
+      textAlign: TextAlign.center,
+      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
     );
   }
 }
