@@ -1,21 +1,24 @@
+import 'package:cashier_app_v2/core/constants/app_colors.dart';
+import 'package:cashier_app_v2/core/constants/app_routes.dart';
+import 'package:cashier_app_v2/di.dart';
+import 'package:cashier_app_v2/features/auth/domain/role_access_policy.dart';
+import 'package:cashier_app_v2/features/auth/domain/session_provider.dart';
+import 'package:cashier_app_v2/features/closing/presentation/screen/closing_screen.dart';
 import 'package:cashier_app_v2/features/dashbord/presentation/screen/dashboard_screen.dart';
+import 'package:cashier_app_v2/features/debts/presentation/screen/debts_screen.dart';
+import 'package:cashier_app_v2/features/expenses/presentation/screen/expenses_screen.dart';
+import 'package:cashier_app_v2/features/home/presentation/screens/my_details_screen.dart';
 import 'package:cashier_app_v2/features/inventory/presentation/screen/products_screen.dart';
+import 'package:cashier_app_v2/features/pos/presentation/screen/pos_screen.dart';
 import 'package:cashier_app_v2/features/purchases/presentation/screen/purchases_invoice_screen.dart';
 import 'package:cashier_app_v2/features/reports/presentation/screen/sales_report_screen.dart';
 import 'package:cashier_app_v2/features/suppliers/presentation/screens/suppliers_screen.dart';
-import 'package:flutter/material.dart';
-
-import 'package:cashier_app_v2/core/constants/app_colors.dart';
-import 'package:cashier_app_v2/core/constants/app_routes.dart';
-import 'package:cashier_app_v2/features/closing/presentation/screen/closing_screen.dart';
-import 'package:cashier_app_v2/features/debts/presentation/screen/debts_screen.dart';
-import 'package:cashier_app_v2/features/expenses/presentation/screen/expenses_screen.dart';
-import 'package:cashier_app_v2/features/pos/presentation/screen/pos_screen.dart';
 import 'package:cashier_app_v2/features/workers/presentation/screen/workers_screen.dart';
+import 'package:flutter/material.dart';
 
 import '../widgets/sidebar_menu.dart';
 
-/// الشاشة الرئيسية المسؤولة عن التنقل بين جميع أقسام التطبيق.
+/// الشاشة الرئيسية المسؤولة عن التنقل بين الشاشات المسموح بها لدور المستخدم.
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onLogout;
 
@@ -26,50 +29,54 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
+  final SessionProvider _session = getIt<SessionProvider>();
+  String _selectedRoute = AppRoutes.pos;
 
-  /// يجب أن يكون ترتيب الشاشات مطابقًا تمامًا لترتيب AppRoutes.order.
-  final List<Widget> _screens = [
-    const PosScreen(),
-    const DebtsScreen(),
-    const DashboardScreen(),
-    const SalesReportScreen(),
-    const ProductsScreen(),
-    const PurchaseInvoicesScreen(),
-    const SuppliersScreen(),
-    const WorkersScreen(),
-    const ExpensesScreen(),
-    const ClosingScreen(),
-  ];
+  List<String> get _visibleRoutes =>
+      RoleAccessPolicy.routesForRole(_session.currentRole);
 
   String get _currentRoute {
-    if (_selectedIndex < 0 || _selectedIndex >= AppRoutes.order.length) {
-      return AppRoutes.order.first;
-    }
-
-    return AppRoutes.order[_selectedIndex];
+    final routes = _visibleRoutes;
+    if (routes.isEmpty) return '';
+    return routes.contains(_selectedRoute) ? _selectedRoute : routes.first;
   }
 
+  String get _roleLabel => switch (_session.currentRole) {
+    'admin' => 'مدير النظام',
+    'manager' => 'مدير',
+    'cashier' => 'كاشير',
+    _ => 'مستخدم',
+  };
+
   void _onNavigate(String route) {
-    final index = AppRoutes.order.indexOf(route);
+    if (!_visibleRoutes.contains(route)) return;
+    setState(() => _selectedRoute = route);
+  }
 
-    // تجاهل المسار إذا لم يكن موجودًا في AppRoutes.order
-    if (index == -1 || index >= _screens.length) {
-      return;
-    }
-
-    setState(() {
-      _selectedIndex = index;
-    });
+  Widget _screenForRoute(String route) {
+    return switch (route) {
+      AppRoutes.pos => const PosScreen(),
+      AppRoutes.debts => const DebtsScreen(),
+      AppRoutes.dashboard => const DashboardScreen(),
+      AppRoutes.reports => const SalesReportScreen(),
+      AppRoutes.inventory => const ProductsScreen(),
+      AppRoutes.purchases => const PurchaseInvoicesScreen(),
+      AppRoutes.suppliers => const SuppliersScreen(),
+      AppRoutes.workers => const WorkersScreen(),
+      AppRoutes.expenses => const ExpensesScreen(),
+      AppRoutes.closing => const ClosingScreen(),
+      AppRoutes.myDetails => const MyDetailsScreen(),
+      _ => const Center(child: Text('هذه الشاشة غير متاحة')),
+    };
   }
 
   @override
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.sizeOf(context).width > 900;
+    final hasRoutes = _visibleRoutes.isNotEmpty;
 
     return Scaffold(
       backgroundColor: AppColors.background,
-
       appBar: isDesktop
           ? null
           : AppBar(
@@ -83,19 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-
-      drawer: isDesktop
-          ? null
-          : Drawer(
-              child: SidebarMenu(
-                currentRoute: _currentRoute,
-                onNavigate: (route) {
-                  _onNavigate(route);
-                  Navigator.of(context).pop();
-                },
-              ),
-            ),
-
+      drawer: !isDesktop && hasRoutes ? Drawer(child: _buildSidebar()) : null,
       body: isDesktop
           ? Column(
               children: [
@@ -117,14 +112,53 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildSidebar() {
+    return SidebarMenu(
+      currentRoute: _currentRoute,
+      allowedRoutes: _visibleRoutes,
+      userName: _session.currentFullName ?? 'المستخدم',
+      userRole: _roleLabel,
+      onNavigate: (route) {
+        _onNavigate(route);
+        Navigator.of(context).pop();
+      },
+    );
+  }
+
   Widget _buildWorkspace(bool isDesktop) {
+    final routes = _visibleRoutes;
+    if (routes.isEmpty) {
+      return const Center(
+        child: Text(
+          'لا توجد صلاحيات مخصصة لهذا الحساب',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+      );
+    }
+
+    final selectedIndex = routes.indexOf(_currentRoute);
     return Row(
       children: [
         if (isDesktop)
-          SidebarMenu(currentRoute: _currentRoute, onNavigate: _onNavigate),
+          SidebarMenu(
+            currentRoute: _currentRoute,
+            allowedRoutes: routes,
+            userName: _session.currentFullName ?? 'المستخدم',
+            userRole: _roleLabel,
+            onNavigate: _onNavigate,
+          ),
         if (isDesktop) const VerticalDivider(width: 1, color: Colors.white12),
         Expanded(
-          child: IndexedStack(index: _selectedIndex, children: _screens),
+          child: IndexedStack(
+            index: selectedIndex,
+            children: [
+              for (final route in routes)
+                KeyedSubtree(
+                  key: ValueKey(route),
+                  child: _screenForRoute(route),
+                ),
+            ],
+          ),
         ),
       ],
     );

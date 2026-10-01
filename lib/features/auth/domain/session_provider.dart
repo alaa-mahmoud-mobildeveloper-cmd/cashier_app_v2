@@ -3,13 +3,21 @@ import 'package:injectable/injectable.dart';
 abstract class SessionProvider {
   int get currentUserId;
   int? get authenticatedUserId;
-  void startSession(int userId);
+  String? get currentRole;
+  String? get currentFullName;
+  void startSession(
+    int userId, {
+    required String role,
+    required String fullName,
+  });
   void endSession();
 }
 
 @LazySingleton(as: SessionProvider)
 class InMemorySessionProvider implements SessionProvider {
   int? _userId;
+  String? _role;
+  String? _fullName;
 
   @override
   int get currentUserId =>
@@ -19,8 +27,26 @@ class InMemorySessionProvider implements SessionProvider {
   int? get authenticatedUserId => _userId;
 
   @override
-  void startSession(int userId) => _userId = userId;
+  String? get currentRole => _role;
 
   @override
-  void endSession() => _userId = null;
+  String? get currentFullName => _fullName;
+
+  @override
+  void startSession(
+    int userId, {
+    required String role,
+    required String fullName,
+  }) {
+    _userId = userId;
+    _role = role.trim().toLowerCase();
+    _fullName = fullName.trim();
+  }
+
+  @override
+  void endSession() {
+    _userId = null;
+    _role = null;
+    _fullName = null;
+  }
 }

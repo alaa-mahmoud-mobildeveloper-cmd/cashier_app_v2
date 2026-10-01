@@ -95,13 +95,14 @@ class AuthRepository {
     }
 
     final user =
-        await (_database.select(_database.users)..where(
-              (row) =>
-                  row.username.equals(normalizedUsername) &
-                  row.isWorker.equals(false),
-            ))
+        await (_database.select(_database.users)
+              ..where((row) => row.username.equals(normalizedUsername)))
             .getSingleOrNull();
-    if (user == null || !user.isActive) return null;
+    if (user == null ||
+        !user.isActive ||
+        (user.isWorker && user.role != 'cashier')) {
+      return null;
+    }
 
     final verification = await _passwordHasher.verifyPassword(
       password: password,
@@ -130,7 +131,7 @@ class AuthRepository {
       );
     });
 
-    _session.startSession(user.id);
+    _session.startSession(user.id, role: user.role, fullName: user.fullName);
     return AuthUser(
       id: user.id,
       username: user.username,

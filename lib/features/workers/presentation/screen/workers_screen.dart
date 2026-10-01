@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../di.dart';
 import '../../domain/entities/worker.dart';
+import '../../domain/entities/worker_creation_request.dart';
 import '../widgets/add_worker_dialog.dart';
 import '../widgets/worker_row.dart';
 import '../widgets/worker_summary_card.dart';
@@ -55,15 +56,25 @@ class _WorkersScreenState extends State<WorkersScreen> {
   }
 
   Future<void> _addWorker() async {
-    final worker = await showDialog<Worker>(
+    final request = await showDialog<WorkerCreationRequest>(
       context: context,
       builder: (_) => const AddWorkerDialog(),
     );
-    if (worker == null || !mounted) return;
+    if (request == null || !mounted) return;
 
     try {
-      await _repository.addWorker(worker);
-      if (mounted) _showMessage('تم حفظ العامل');
+      await _repository.addWorker(
+        request.worker,
+        username: request.username,
+        password: request.password,
+      );
+      if (mounted) {
+        _showMessage(
+          request.username == null
+              ? 'تم حفظ العامل'
+              : 'تم إنشاء حساب الكاشير وحفظ العامل',
+        );
+      }
     } catch (error) {
       if (mounted) _showMessage('تعذر حفظ العامل: $error');
     }

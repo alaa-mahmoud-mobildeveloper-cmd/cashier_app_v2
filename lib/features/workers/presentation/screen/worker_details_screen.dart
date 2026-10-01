@@ -14,8 +14,13 @@ import '../../../../di.dart';
 
 class WorkerDetailsScreen extends StatefulWidget {
   final Worker worker;
+  final bool readOnly;
 
-  const WorkerDetailsScreen({super.key, required this.worker});
+  const WorkerDetailsScreen({
+    super.key,
+    required this.worker,
+    this.readOnly = false,
+  });
 
   @override
   State<WorkerDetailsScreen> createState() => _WorkerDetailsScreenState();
@@ -137,7 +142,10 @@ class _WorkerDetailsScreenState extends State<WorkerDetailsScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              WorkerDetailsHeader(worker: widget.worker),
+                              WorkerDetailsHeader(
+                                worker: widget.worker,
+                                showBackButton: !widget.readOnly,
+                              ),
                               const SizedBox(height: 20),
                               WorkerDetailsSummaryCards(
                                 worker: widget.worker,
@@ -170,13 +178,15 @@ class _WorkerDetailsScreenState extends State<WorkerDetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AddAdvanceSection(
-                amountController: _advanceAmountController,
-                reasonController: _advanceReasonController,
-                isSubmitting: _isSavingAdvance,
-                onSubmit: _addAdvance,
-              ),
-              const SizedBox(height: 16),
+              if (!widget.readOnly) ...[
+                AddAdvanceSection(
+                  amountController: _advanceAmountController,
+                  reasonController: _advanceReasonController,
+                  isSubmitting: _isSavingAdvance,
+                  onSubmit: _addAdvance,
+                ),
+                const SizedBox(height: 16),
+              ],
               AdvancesListSection(advances: data.advances),
             ],
           ),
@@ -187,12 +197,14 @@ class _WorkerDetailsScreenState extends State<WorkerDetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AddProductSection(
-                barcodeController: _productBarcodeController,
-                isSubmitting: _isIssuingProduct,
-                onSubmit: _issueProduct,
-              ),
-              const SizedBox(height: 16),
+              if (!widget.readOnly) ...[
+                AddProductSection(
+                  barcodeController: _productBarcodeController,
+                  isSubmitting: _isIssuingProduct,
+                  onSubmit: _issueProduct,
+                ),
+                const SizedBox(height: 16),
+              ],
               ProductsListSection(products: data.products),
             ],
           ),
@@ -205,21 +217,25 @@ class _WorkerDetailsScreenState extends State<WorkerDetailsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AddAdvanceSection(
-          amountController: _advanceAmountController,
-          reasonController: _advanceReasonController,
-          isSubmitting: _isSavingAdvance,
-          onSubmit: _addAdvance,
-        ),
-        const SizedBox(height: 16),
+        if (!widget.readOnly) ...[
+          AddAdvanceSection(
+            amountController: _advanceAmountController,
+            reasonController: _advanceReasonController,
+            isSubmitting: _isSavingAdvance,
+            onSubmit: _addAdvance,
+          ),
+          const SizedBox(height: 16),
+        ],
         AdvancesListSection(advances: data.advances),
-        const SizedBox(height: 16),
-        AddProductSection(
-          barcodeController: _productBarcodeController,
-          isSubmitting: _isIssuingProduct,
-          onSubmit: _issueProduct,
-        ),
-        const SizedBox(height: 16),
+        if (!widget.readOnly) ...[
+          const SizedBox(height: 16),
+          AddProductSection(
+            barcodeController: _productBarcodeController,
+            isSubmitting: _isIssuingProduct,
+            onSubmit: _issueProduct,
+          ),
+          const SizedBox(height: 16),
+        ],
         ProductsListSection(products: data.products),
       ],
     );

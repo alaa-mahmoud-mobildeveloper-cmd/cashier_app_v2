@@ -4,8 +4,13 @@ import '../../domain/entities/worker.dart';
 
 class WorkerDetailsHeader extends StatelessWidget {
   final Worker worker;
+  final bool showBackButton;
 
-  const WorkerDetailsHeader({super.key, required this.worker});
+  const WorkerDetailsHeader({
+    super.key,
+    required this.worker,
+    this.showBackButton = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -14,16 +19,18 @@ class WorkerDetailsHeader extends StatelessWidget {
       children: [
         Row(
           children: [
-            IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(
-                Icons.arrow_forward_ios,
-                color: AppColors.textSecondary,
-                size: 18,
+            if (showBackButton) ...[
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(
+                  Icons.arrow_forward_ios,
+                  color: AppColors.textSecondary,
+                  size: 18,
+                ),
+                tooltip: 'رجوع',
               ),
-              tooltip: 'رجوع',
-            ),
-            const SizedBox(width: 8),
+              const SizedBox(width: 8),
+            ],
             Text(
               worker.name,
               style: const TextStyle(

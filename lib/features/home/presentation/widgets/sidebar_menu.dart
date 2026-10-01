@@ -11,9 +11,19 @@ import 'sidebar_section_title.dart';
 /// مستقل قابل لإعادة الاستخدام والاختبار لوحده.
 class SidebarMenu extends StatelessWidget {
   final String currentRoute;
+  final List<String> allowedRoutes;
+  final String userName;
+  final String userRole;
   final ValueChanged<String> onNavigate;
 
-  const SidebarMenu({super.key, required this.currentRoute, required this.onNavigate});
+  const SidebarMenu({
+    super.key,
+    required this.currentRoute,
+    required this.allowedRoutes,
+    required this.userName,
+    required this.userRole,
+    required this.onNavigate,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -29,21 +39,25 @@ class SidebarMenu extends StatelessWidget {
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
-                  for (final section in sidebarSections) ...[
-                    SidebarSectionTitle(section.title),
-                    for (final item in section.items)
-                      SidebarNavItem(
-                        icon: item.icon,
-                        label: item.label,
-                        isActive: currentRoute == item.route,
-                        onTap: () => onNavigate(item.route),
-                      ),
-                  ],
+                  for (final section in sidebarSections)
+                    if (section.items.any(
+                      (item) => allowedRoutes.contains(item.route),
+                    )) ...[
+                      SidebarSectionTitle(section.title),
+                      for (final item in section.items)
+                        if (allowedRoutes.contains(item.route))
+                          SidebarNavItem(
+                            icon: item.icon,
+                            label: item.label,
+                            isActive: currentRoute == item.route,
+                            onTap: () => onNavigate(item.route),
+                          ),
+                    ],
                 ],
               ),
             ),
             const Divider(color: AppColors.border, height: 1),
-            const SidebarFooter(userName: 'احمد', userRole: 'مدير النظام'),
+            SidebarFooter(userName: userName, userRole: userRole),
           ],
         ),
       ),
