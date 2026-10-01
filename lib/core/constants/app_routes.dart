@@ -9,6 +9,7 @@ class AppRoutes {
   static const closing = 'closing';
   static const purchases = 'purchases';
   static const suppliers = 'suppliers';
+  static const myDetails = 'my_details';
 
   static const List<String> order = [
     pos,
@@ -21,6 +22,6 @@ class AppRoutes {
     workers,
     expenses,
     closing,
-
+    myDetails,
   ];
 }

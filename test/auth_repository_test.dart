@@ -56,6 +56,8 @@ void main() {
       expect(user?.id, stored.id);
       expect(user?.role, 'admin');
       expect(session.currentUserId, stored.id);
+      expect(session.currentRole, 'admin');
+      expect(session.currentFullName, 'مدير النظام');
 
       final loggedIn = await (database.select(
         database.users,
@@ -65,6 +67,8 @@ void main() {
 
       await repository.signOut();
       expect(session.authenticatedUserId, isNull);
+      expect(session.currentRole, isNull);
+      expect(session.currentFullName, isNull);
       final loggedOut = await (database.select(
         database.users,
       )..where((row) => row.id.equals(stored.id))).getSingle();

@@ -130,7 +130,7 @@ class AuthRepository {
       );
     });
 
-    _session.startSession(user.id);
+    _session.startSession(user.id, role: user.role, fullName: user.fullName);
     return AuthUser(
       id: user.id,
       username: user.username,
