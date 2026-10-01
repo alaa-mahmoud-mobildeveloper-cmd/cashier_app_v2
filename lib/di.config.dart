@@ -125,7 +125,7 @@ extension GetItInjectableX on _i174.GetIt {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     gh.lazySingleton<_i111.AppDatabase>(() => _i111.AppDatabase());
     gh.lazySingleton<_i764.SessionProvider>(
-      () => _i764.StaticSessionProvider(),
+      () => _i764.InMemorySessionProvider(),
     );
     gh.factory<_i465.SalesRepository>(
       () => _i405.SalesRepositoryImpl(gh<_i111.AppDatabase>()),

@@ -17,7 +17,9 @@ import '../widgets/sidebar_menu.dart';
 
 /// الشاشة الرئيسية المسؤولة عن التنقل بين جميع أقسام التطبيق.
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final VoidCallback? onLogout;
+
+  const HomeScreen({super.key, this.onLogout});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -41,8 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   String get _currentRoute {
-    if (_selectedIndex < 0 ||
-        _selectedIndex >= AppRoutes.order.length) {
+    if (_selectedIndex < 0 || _selectedIndex >= AppRoutes.order.length) {
       return AppRoutes.order.first;
     }
 
@@ -72,44 +73,60 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: isDesktop
           ? null
           : AppBar(
-        backgroundColor: AppColors.surfaceLight,
-        title: const Text('سوبر ماركت'),
-      ),
+              backgroundColor: AppColors.surfaceLight,
+              title: const Text('سوبر ماركت'),
+              actions: [
+                IconButton(
+                  onPressed: widget.onLogout,
+                  tooltip: 'تسجيل الخروج',
+                  icon: const Icon(Icons.logout),
+                ),
+              ],
+            ),
 
       drawer: isDesktop
           ? null
           : Drawer(
-        child: SidebarMenu(
-          currentRoute: _currentRoute,
-          onNavigate: (route) {
-            _onNavigate(route);
-            Navigator.of(context).pop();
-          },
+              child: SidebarMenu(
+                currentRoute: _currentRoute,
+                onNavigate: (route) {
+                  _onNavigate(route);
+                  Navigator.of(context).pop();
+                },
+              ),
+            ),
+
+      body: isDesktop
+          ? Column(
+              children: [
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.only(end: 16, top: 4),
+                    child: TextButton.icon(
+                      onPressed: widget.onLogout,
+                      icon: const Icon(Icons.logout),
+                      label: const Text('تسجيل الخروج'),
+                    ),
+                  ),
+                ),
+                Expanded(child: _buildWorkspace(isDesktop)),
+              ],
+            )
+          : _buildWorkspace(isDesktop),
+    );
+  }
+
+  Widget _buildWorkspace(bool isDesktop) {
+    return Row(
+      children: [
+        if (isDesktop)
+          SidebarMenu(currentRoute: _currentRoute, onNavigate: _onNavigate),
+        if (isDesktop) const VerticalDivider(width: 1, color: Colors.white12),
+        Expanded(
+          child: IndexedStack(index: _selectedIndex, children: _screens),
         ),
-      ),
-
-      body: Row(
-        children: [
-          if (isDesktop)
-            SidebarMenu(
-              currentRoute: _currentRoute,
-              onNavigate: _onNavigate,
-            ),
-
-          if (isDesktop)
-            const VerticalDivider(
-              width: 1,
-              color: Colors.white12,
-            ),
-
-          Expanded(
-            child: IndexedStack(
-              index: _selectedIndex,
-              children: _screens,
-            ),
-          ),
-        ],
-      ),
+      ],
     );
   }
 }
