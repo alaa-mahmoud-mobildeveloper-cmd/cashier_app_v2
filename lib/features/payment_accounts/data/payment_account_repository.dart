@@ -110,13 +110,6 @@ class PaymentAccountRepository {
         'الرصيد الافتتاحي يجب أن يكون رقمًا موجبًا أو صفرًا',
       );
     }
-    if (type != PaymentAccountType.wallet.name && openingBalance > 0) {
-      throw ArgumentError.value(
-        openingBalance,
-        'openingBalance',
-        'الرصيد الافتتاحي متاح للمحافظ الإلكترونية فقط',
-      );
-    }
     if (openingBalance > 0 && userId == null) {
       throw ArgumentError('يلزم تحديد المستخدم لتسجيل الرصيد الافتتاحي');
     }
@@ -162,7 +155,7 @@ class PaymentAccountRepository {
     required int userId,
     required double amount,
     String? note,
-  }) => _recordWalletMovement(
+  }) => _recordAccountMovement(
     accountId: accountId,
     userId: userId,
     kind: 'deposit',
@@ -175,7 +168,7 @@ class PaymentAccountRepository {
     required int userId,
     required double amount,
     String? note,
-  }) => _recordWalletMovement(
+  }) => _recordAccountMovement(
     accountId: accountId,
     userId: userId,
     kind: 'withdrawal',
@@ -183,7 +176,7 @@ class PaymentAccountRepository {
     note: note,
   );
 
-  Future<int> _recordWalletMovement({
+  Future<int> _recordAccountMovement({
     required int accountId,
     required int userId,
     required String kind,
@@ -200,13 +193,10 @@ class PaymentAccountRepository {
         _database.paymentAccounts,
       )..where((row) => row.id.equals(accountId))).getSingleOrNull();
       if (account == null) {
-        throw StateError('حساب المحفظة غير موجود');
-      }
-      if (account.type != PaymentAccountType.wallet.name) {
-        throw StateError('الإيداع والسحب اليدويان متاحان للمحافظ فقط');
+        throw StateError('حساب الاستلام غير موجود');
       }
       if (!account.isActive) {
-        throw StateError('لا يمكن تسجيل حركة على محفظة متوقفة');
+        throw StateError('لا يمكن تسجيل حركة على حساب متوقف');
       }
 
       if (kind == 'withdrawal') {

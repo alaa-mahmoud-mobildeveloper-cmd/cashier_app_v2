@@ -42,7 +42,7 @@ void main() {
 
       await tester.tap(find.text('إضافة حساب'));
       await tester.pumpAndSettle();
-      expect(find.text('الرصيد الموجود حاليًا في المحفظة'), findsOneWidget);
+      expect(find.text('الرصيد الموجود حاليًا في الحساب'), findsOneWidget);
 
       var fields = find.byType(TextFormField);
       await tester.enterText(fields.at(0), 'محفظة الفرع');
@@ -117,18 +117,62 @@ void main() {
     await tester.tap(find.text('فوري').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('الرصيد الموجود حاليًا في المحفظة'), findsNothing);
+    expect(find.text('الرصيد الموجود حاليًا في الحساب'), findsOneWidget);
     final fields = find.byType(TextFormField);
     await tester.enterText(fields.at(0), 'حساب فوري الفرع');
     await tester.enterText(fields.at(1), 'فوري');
     await tester.enterText(fields.at(2), '1234567890123');
+    await tester.enterText(fields.at(3), '80');
     await tester.tap(find.text('حفظ'));
     await tester.pumpAndSettle();
 
     final account = await database.select(database.paymentAccounts).getSingle();
     expect(account.type, 'fawry');
     expect(account.reference, '1234567890123');
+    expect(
+      (await database.select(database.paymentAccountTransactions).get())
+          .single
+          .amount,
+      80,
+    );
     expect(find.textContaining('فوري'), findsWidgets);
+    expect(find.text('80.00 ج'), findsOneWidget);
+    expect(find.text('إيداع'), findsOneWidget);
+    expect(find.text('سحب'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('Visa accounts can set an opening balance and move funds', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: PaymentAccountsScreen()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('إضافة حساب'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('فيزا').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('الرصيد الموجود حاليًا في الحساب'), findsOneWidget);
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), 'جهاز فيزا 2');
+    await tester.enterText(fields.at(1), 'بنك الاختبار');
+    await tester.enterText(fields.at(2), 'نقاط بيع 2');
+    await tester.enterText(fields.at(3), '60');
+    await tester.tap(find.text('حفظ'));
+    await tester.pumpAndSettle();
+
+    final account = await database.select(database.paymentAccounts).getSingle();
+    expect(account.type, 'visa');
+    expect(find.text('60.00 ج'), findsOneWidget);
+    expect(find.text('إيداع'), findsOneWidget);
+    expect(find.text('سحب'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
