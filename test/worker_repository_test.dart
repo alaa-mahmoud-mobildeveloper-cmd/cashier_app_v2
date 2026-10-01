@@ -1,4 +1,7 @@
 import 'package:cashier_app_v2/core/database/app_database.dart';
+import 'package:cashier_app_v2/features/auth/data/repositories/auth_repository.dart';
+import 'package:cashier_app_v2/features/auth/data/security/password_hasher.dart';
+import 'package:cashier_app_v2/features/auth/domain/session_provider.dart';
 import 'package:cashier_app_v2/features/workers/data/repositories/worker_repository.dart';
 import 'package:cashier_app_v2/features/workers/domain/entities/worker.dart';
 import 'package:drift/native.dart';
@@ -19,7 +22,7 @@ void main() {
 
   test('persists workers and advances and provides updated totals', () async {
     final workerId = await repository.addWorker(
-      Worker(name: 'أحمد', phone: '01000000000', role: 'كاشير', salary: 5000),
+      Worker(name: 'أحمد', phone: '01000000000', role: 'عامل', salary: 5000),
     );
     await repository.addAdvance(
       workerId: workerId,
@@ -39,11 +42,55 @@ void main() {
     expect(details.advancesTotal, 250);
   });
 
+  test('cashier worker receives a hashed login and can sign in', () async {
+    const password = 'Cashier-Strong-Password-2026';
+    final workerId = await repository.addWorker(
+      Worker(name: 'سارة', phone: '01011111111', role: 'كاشير', salary: 4500),
+      username: 'CashierTest',
+      password: password,
+    );
+
+    final saved = await (database.select(
+      database.users,
+    )..where((row) => row.id.equals(workerId))).getSingle();
+    expect(saved.username, 'cashiertest');
+    expect(saved.role, 'cashier');
+    expect(saved.isWorker, isTrue);
+    expect(saved.passwordHash, startsWith('argon2id-v1:'));
+    expect(saved.passwordHash, isNot(password));
+
+    final session = InMemorySessionProvider();
+    final auth = AuthRepository(database, session, PasswordHasher());
+    final user = await auth.signIn(
+      username: ' CASHIERTEST ',
+      password: password,
+    );
+    expect(user?.id, workerId);
+    expect(user?.role, 'cashier');
+    expect(session.currentRole, 'cashier');
+    expect((await repository.watchWorkers().first).single.id, workerId);
+  });
+
+  test('cashier worker requires valid login credentials', () async {
+    await expectLater(
+      repository.addWorker(
+        Worker(
+          name: 'محمود',
+          phone: '01022222222',
+          role: 'كاشير',
+          salary: 4000,
+        ),
+      ),
+      throwsArgumentError,
+    );
+    expect(await database.select(database.users).get(), isEmpty);
+  });
+
   test(
     'barcode issue atomically decrements stock and records the item',
     () async {
       final workerId = await repository.addWorker(
-        Worker(name: 'مريم', phone: '01111111111', role: 'كاشير', salary: 4200),
+        Worker(name: 'مريم', phone: '01111111111', role: 'عامل', salary: 4200),
       );
       final productId = await database
           .into(database.products)
@@ -77,7 +124,7 @@ void main() {
 
   test('does not issue an out-of-stock product', () async {
     final workerId = await repository.addWorker(
-      Worker(name: 'علي', phone: '01222222222', role: 'كاشير', salary: 4000),
+      Worker(name: 'علي', phone: '01222222222', role: 'عامل', salary: 4000),
     );
     await database
         .into(database.products)

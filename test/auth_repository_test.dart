@@ -109,7 +109,7 @@ void main() {
     () async {
       final workers = WorkerRepository(database);
       await workers.addWorker(
-        Worker(name: 'موظف', phone: '01012345678', role: 'كاشير', salary: 4000),
+        Worker(name: 'موظف', phone: '01012345678', role: 'عامل', salary: 4000),
       );
 
       expect(await repository.hasLoginAccounts(), isFalse);
