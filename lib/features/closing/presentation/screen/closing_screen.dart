@@ -258,6 +258,7 @@ class _ClosingScreenState extends State<ClosingScreen> {
             return compact
                 ? content
                 : Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const ClosingSidebar(),
                       Expanded(child: content),
