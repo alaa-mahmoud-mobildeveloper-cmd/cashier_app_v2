@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../di.dart';
 import '../../domain/entities/expense.dart';
+import '../../../auth/domain/session_provider.dart';
+import '../../../payment_accounts/data/payment_account_repository.dart';
+import '../../../payment_accounts/domain/payment_account.dart';
 import '../widgets/add_expense_dialog.dart';
 import '../widgets/expense_details_dialog.dart';
 import '../widgets/expense_filters.dart';
@@ -23,6 +26,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   final TextEditingController _searchController = TextEditingController();
   late final ExpenseRepository _repository;
   late final Stream<List<Expense>> _expensesStream;
+  late final PaymentAccountRepository _accountsRepository;
+  List<PaymentAccountInfo> _paymentAccounts = const [];
   String _selectedCategory = 'الكل';
 
   static const List<String> _categories = [
@@ -39,7 +44,18 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   void initState() {
     super.initState();
     _repository = ExpenseRepository(getIt<AppDatabase>());
+    _accountsRepository = PaymentAccountRepository(getIt<AppDatabase>());
     _expensesStream = _repository.watchExpenses();
+    _loadPaymentAccounts();
+  }
+
+  Future<void> _loadPaymentAccounts() async {
+    final accounts = [
+      ...await _accountsRepository.getActiveAccounts(type: 'wallet'),
+      ...await _accountsRepository.getActiveAccounts(type: 'visa'),
+      ...await _accountsRepository.getActiveAccounts(type: 'fawry'),
+    ];
+    if (mounted) setState(() => _paymentAccounts = accounts);
   }
 
   @override
@@ -83,12 +99,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   Future<void> _addExpense() async {
     final expense = await showDialog<Expense>(
       context: context,
-      builder: (_) => const AddExpenseDialog(),
+      builder: (_) => AddExpenseDialog(accounts: _paymentAccounts),
     );
     if (expense == null || !mounted) return;
 
     try {
-      await _repository.addExpense(expense);
+      await _repository.addExpense(
+        expense,
+        userId: getIt<SessionProvider>().authenticatedUserId,
+      );
       if (mounted) _showMessage('تم حفظ المصروف');
     } catch (error) {
       if (mounted) _showMessage('تعذر حفظ المصروف: $error');
@@ -98,12 +117,16 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   Future<void> _editExpense(Expense oldExpense) async {
     final updated = await showDialog<Expense>(
       context: context,
-      builder: (_) => AddExpenseDialog(expense: oldExpense),
+      builder: (_) =>
+          AddExpenseDialog(expense: oldExpense, accounts: _paymentAccounts),
     );
     if (updated == null || !mounted) return;
 
     try {
-      final affectedRows = await _repository.updateExpense(updated);
+      final affectedRows = await _repository.updateExpense(
+        updated,
+        userId: getIt<SessionProvider>().authenticatedUserId,
+      );
       if (mounted) {
         _showMessage(
           affectedRows == 0

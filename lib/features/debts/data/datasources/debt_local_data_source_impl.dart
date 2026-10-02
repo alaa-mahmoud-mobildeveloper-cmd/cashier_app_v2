@@ -2,38 +2,33 @@ import 'package:cashier_app_v2/core/database/app_database.dart';
 import 'package:cashier_app_v2/features/debts/domain/entities/debt_invoice.dart';
 import 'package:drift/drift.dart';
 import 'package:injectable/injectable.dart';
+import 'package:cashier_app_v2/features/auth/domain/session_provider.dart';
 
 import 'debt_local_data_source.dart';
 
 @Injectable(as: DebtLocalDataSource)
 class DebtLocalDataSourceImpl implements DebtLocalDataSource {
   final AppDatabase _db;
+  final SessionProvider _session;
 
-  DebtLocalDataSourceImpl(this._db);
+  DebtLocalDataSourceImpl(this._db, this._session);
 
   @override
   Stream<List<DebtInvoice>> watchDebts() {
     final query = _db.select(_db.invoices).join([
       leftOuterJoin(
         _db.customers,
-        _db.customers.id.equalsExp(
-          _db.invoices.customerId,
-        ),
+        _db.customers.id.equalsExp(_db.invoices.customerId),
       ),
     ]);
 
     query.orderBy([
-      OrderingTerm(
-        expression: _db.invoices.createdAt,
-        mode: OrderingMode.desc,
-      ),
+      OrderingTerm(expression: _db.invoices.createdAt, mode: OrderingMode.desc),
     ]);
 
-    return query.watch().map<List<DebtInvoice>>(
-          (List<TypedResult> rows) {
-        return rows.map<DebtInvoice>(_mapRow).toList();
-      },
-    );
+    return query.watch().map<List<DebtInvoice>>((List<TypedResult> rows) {
+      return rows.map<DebtInvoice>(_mapRow).toList();
+    });
   }
 
   @override
@@ -41,17 +36,12 @@ class DebtLocalDataSourceImpl implements DebtLocalDataSource {
     final query = _db.select(_db.invoices).join([
       leftOuterJoin(
         _db.customers,
-        _db.customers.id.equalsExp(
-          _db.invoices.customerId,
-        ),
+        _db.customers.id.equalsExp(_db.invoices.customerId),
       ),
     ]);
 
     query.orderBy([
-      OrderingTerm(
-        expression: _db.invoices.createdAt,
-        mode: OrderingMode.desc,
-      ),
+      OrderingTerm(expression: _db.invoices.createdAt, mode: OrderingMode.desc),
     ]);
 
     final List<TypedResult> rows = await query.get();
@@ -68,9 +58,7 @@ class DebtLocalDataSourceImpl implements DebtLocalDataSource {
 
     final calculatedRemaining = total - paid;
 
-    final remaining = calculatedRemaining <= 0.01
-        ? 0.0
-        : calculatedRemaining;
+    final remaining = calculatedRemaining <= 0.01 ? 0.0 : calculatedRemaining;
 
     return DebtInvoice(
       id: invoice.id,
@@ -113,20 +101,16 @@ class DebtLocalDataSourceImpl implements DebtLocalDataSource {
   Future<void> payDebt({
     required int invoiceId,
     required double amount,
+    int? paymentAccountId,
   }) async {
     if (amount <= 0) {
-      throw ArgumentError(
-        'مبلغ التحصيل يجب أن يكون أكبر من صفر',
-      );
+      throw ArgumentError('مبلغ التحصيل يجب أن يكون أكبر من صفر');
     }
 
     await _db.transaction(() async {
-      final invoice = await (
-          _db.select(_db.invoices)
-            ..where(
-                  (tbl) => tbl.id.equals(invoiceId),
-            )
-      ).getSingleOrNull();
+      final invoice = await (_db.select(
+        _db.invoices,
+      )..where((tbl) => tbl.id.equals(invoiceId))).getSingleOrNull();
 
       if (invoice == null) {
         throw Exception('الفاتورة غير موجودة');
@@ -139,11 +123,9 @@ class DebtLocalDataSourceImpl implements DebtLocalDataSource {
       final total = invoice.netAmount;
       final currentPaid = invoice.paidAmount;
 
-      final currentRemainingValue =
-          total - currentPaid;
+      final currentRemainingValue = total - currentPaid;
 
-      final currentRemaining =
-      currentRemainingValue <= 0.01
+      final currentRemaining = currentRemainingValue <= 0.01
           ? 0.0
           : currentRemainingValue;
 
@@ -152,18 +134,14 @@ class DebtLocalDataSourceImpl implements DebtLocalDataSource {
       }
 
       if (amount > currentRemaining + 0.01) {
-        throw Exception(
-          'مبلغ التحصيل أكبر من المبلغ المتبقي',
-        );
+        throw Exception('مبلغ التحصيل أكبر من المبلغ المتبقي');
       }
 
       final newPaid = currentPaid + amount;
 
-      final newRemainingValue =
-          total - newPaid;
+      final newRemainingValue = total - newPaid;
 
-      final newRemaining =
-      newRemainingValue.abs() <= 0.01
+      final newRemaining = newRemainingValue.abs() <= 0.01
           ? 0.0
           : newRemainingValue;
 
@@ -177,12 +155,9 @@ class DebtLocalDataSourceImpl implements DebtLocalDataSource {
         newStatus = 'unpaid';
       }
 
-      await (
-          _db.update(_db.invoices)
-            ..where(
-                  (tbl) => tbl.id.equals(invoiceId),
-            )
-      ).write(
+      await (_db.update(
+        _db.invoices,
+      )..where((tbl) => tbl.id.equals(invoiceId))).write(
         InvoicesCompanion(
           paidAmount: Value(newPaid),
           remainingAmount: Value(newRemaining),
@@ -190,30 +165,58 @@ class DebtLocalDataSourceImpl implements DebtLocalDataSource {
         ),
       );
 
+      PaymentAccount? account;
+      if (paymentAccountId != null) {
+        account = await (_db.select(
+          _db.paymentAccounts,
+        )..where((row) => row.id.equals(paymentAccountId))).getSingleOrNull();
+        if (account == null || !account.isActive) {
+          throw Exception('حساب التحصيل غير موجود أو متوقف');
+        }
+      }
+
+      await _db
+          .into(_db.debtPayments)
+          .insert(
+            DebtPaymentsCompanion.insert(
+              invoiceId: invoiceId,
+              amount: amount,
+              paymentMethod: paymentAccountId == null ? 'cash' : account!.type,
+              paymentAccountId: Value(paymentAccountId),
+              userId: _session.currentUserId,
+            ),
+          );
+
+      if (paymentAccountId != null) {
+        await _db
+            .into(_db.paymentAccountTransactions)
+            .insert(
+              PaymentAccountTransactionsCompanion.insert(
+                accountId: paymentAccountId,
+                invoiceId: Value(invoiceId),
+                invoiceNumber: Value(invoice.invoiceNumber),
+                userId: _session.currentUserId,
+                kind: 'debt_payment',
+                amount: amount,
+                note: const Value('سداد فاتورة آجل'),
+              ),
+            );
+      }
+
       if (invoice.customerId != null) {
-        final customer = await (
-            _db.select(_db.customers)
-              ..where(
-                    (tbl) => tbl.id.equals(invoice.customerId!),
-              )
-        ).getSingleOrNull();
+        final customer =
+            await (_db.select(_db.customers)
+                  ..where((tbl) => tbl.id.equals(invoice.customerId!)))
+                .getSingleOrNull();
 
         if (customer != null) {
-          final newCustomerDebt =
-          (customer.totalDebt - amount)
+          final newCustomerDebt = (customer.totalDebt - amount)
               .clamp(0.0, double.infinity)
               .toDouble();
 
-          await (
-              _db.update(_db.customers)
-                ..where(
-                      (tbl) => tbl.id.equals(customer.id),
-                )
-          ).write(
-            CustomersCompanion(
-              totalDebt: Value(newCustomerDebt),
-            ),
-          );
+          await (_db.update(_db.customers)
+                ..where((tbl) => tbl.id.equals(customer.id)))
+              .write(CustomersCompanion(totalDebt: Value(newCustomerDebt)));
         }
       }
     });

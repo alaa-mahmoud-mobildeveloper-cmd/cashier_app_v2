@@ -5,7 +5,7 @@ class PaymentBalanceModel {
   final String? subtitle;
   final IconData icon;
   final Color color;
-
+  final int? accountId;
   double openingBalance;
   double systemMovement;
   double actualBalance;
@@ -15,16 +15,12 @@ class PaymentBalanceModel {
     required this.icon,
     required this.color,
     this.subtitle,
+    this.accountId,
     this.openingBalance = 0,
     this.systemMovement = 0,
     this.actualBalance = 0,
   });
 
-  double get expectedBalance {
-    return openingBalance + systemMovement;
-  }
-
-  double get difference {
-    return actualBalance - expectedBalance;
-  }
+  double get expectedBalance => openingBalance + systemMovement;
+  double get difference => actualBalance - expectedBalance;
 }

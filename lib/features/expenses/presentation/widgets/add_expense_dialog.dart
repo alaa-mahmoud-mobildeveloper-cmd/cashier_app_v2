@@ -1,28 +1,30 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../payment_accounts/domain/payment_account.dart';
 import '../../domain/entities/expense.dart';
 
 class AddExpenseDialog extends StatefulWidget {
   final Expense? expense;
+  final List<PaymentAccountInfo> accounts;
 
-  const AddExpenseDialog({super.key, this.expense});
+  const AddExpenseDialog({super.key, this.expense, this.accounts = const []});
 
   @override
   State<AddExpenseDialog> createState() => _AddExpenseDialogState();
 }
 
 class _AddExpenseDialogState extends State<AddExpenseDialog> {
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
+  final _formKey = GlobalKey<FormState>();
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
   late final TextEditingController _amountController;
-
   late String _selectedCategory;
   late ExpenseStatus _selectedStatus;
+  late String _selectedPaymentMethod;
+  int? _selectedAccountId;
 
-  static const List<String> _categories = [
+  static const _categories = [
     'إيجار',
     'رواتب',
     'مرافق',
@@ -34,16 +36,18 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
   @override
   void initState() {
     super.initState();
-    final expense = widget.expense;
-    _titleController = TextEditingController(text: expense?.title ?? '');
-    _descriptionController = TextEditingController(
-      text: expense?.description ?? '',
-    );
+    final e = widget.expense;
+    _titleController = TextEditingController(text: e?.title ?? '');
+    _descriptionController = TextEditingController(text: e?.description ?? '');
     _amountController = TextEditingController(
-      text: expense == null ? '' : expense.amount.toString(),
+      text: e == null ? '' : e.amount.toString(),
     );
-    _selectedCategory = expense?.category ?? _categories.first;
-    _selectedStatus = expense?.status ?? ExpenseStatus.paid;
+    _selectedCategory = e?.category ?? _categories.first;
+    _selectedStatus = e?.status ?? ExpenseStatus.paid;
+    _selectedPaymentMethod = e?.paymentAccountId != null
+        ? 'account'
+        : (e?.paymentMethod ?? 'cash');
+    _selectedAccountId = e?.paymentAccountId;
   }
 
   @override
@@ -56,7 +60,6 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
-
     final amount = double.tryParse(_amountController.text.trim());
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -64,18 +67,32 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
       );
       return;
     }
-
-    final newExpense = Expense(
-      id: widget.expense?.id,
-      title: _titleController.text.trim(),
-      category: _selectedCategory,
-      description: _descriptionController.text.trim(),
-      date: widget.expense?.date ?? DateTime.now(),
-      amount: amount,
-      status: _selectedStatus,
+    if (_selectedStatus == ExpenseStatus.paid &&
+        _selectedPaymentMethod == 'account' &&
+        _selectedAccountId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('اختر الحساب الإلكتروني')));
+      return;
+    }
+    Navigator.pop(
+      context,
+      Expense(
+        id: widget.expense?.id,
+        title: _titleController.text.trim(),
+        category: _selectedCategory,
+        description: _descriptionController.text.trim(),
+        date: widget.expense?.date ?? DateTime.now(),
+        amount: amount,
+        status: _selectedStatus,
+        paymentMethod: _selectedPaymentMethod == 'account'
+            ? widget.accounts.firstWhere((a) => a.id == _selectedAccountId).type
+            : _selectedPaymentMethod,
+        paymentAccountId: _selectedPaymentMethod == 'account'
+            ? _selectedAccountId
+            : null,
+      ),
     );
-
-    Navigator.pop(context, newExpense);
   }
 
   @override
@@ -83,7 +100,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
     return AlertDialog(
       title: Text(widget.expense == null ? 'إضافة مصروف' : 'تعديل المصروف'),
       content: SizedBox(
-        width: 440,
+        width: 460,
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
@@ -107,15 +124,9 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                     prefixIcon: Icon(Icons.category_outlined),
                   ),
                   items: _categories
-                      .map(
-                        (category) => DropdownMenuItem(
-                          value: category,
-                          child: Text(category),
-                        ),
-                      )
+                      .map((v) => DropdownMenuItem(value: v, child: Text(v)))
                       .toList(),
-                  onChanged: (value) =>
-                      setState(() => _selectedCategory = value!),
+                  onChanged: (v) => setState(() => _selectedCategory = v!),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -132,15 +143,6 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: _descriptionController,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'الوصف (اختياري)',
-                    prefixIcon: Icon(Icons.notes_outlined),
-                  ),
-                ),
-                const SizedBox(height: 12),
                 DropdownButtonFormField<ExpenseStatus>(
                   initialValue: _selectedStatus,
                   decoration: const InputDecoration(
@@ -150,15 +152,74 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                   items: const [
                     DropdownMenuItem(
                       value: ExpenseStatus.paid,
-                      child: Text('مدفوع'),
+                      child: Text('مدفوع الآن'),
                     ),
                     DropdownMenuItem(
                       value: ExpenseStatus.pending,
-                      child: Text('معلق'),
+                      child: Text('آجل / غير مدفوع'),
                     ),
                   ],
-                  onChanged: (value) =>
-                      setState(() => _selectedStatus = value!),
+                  onChanged: (v) => setState(() {
+                    _selectedStatus = v!;
+                    if (v == ExpenseStatus.pending) {
+                      _selectedPaymentMethod = 'credit';
+                      _selectedAccountId = null;
+                    }
+                  }),
+                ),
+                if (_selectedStatus == ExpenseStatus.paid) ...[
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedPaymentMethod == 'account'
+                        ? 'account'
+                        : 'cash',
+                    decoration: const InputDecoration(
+                      labelText: 'طريقة الدفع',
+                      prefixIcon: Icon(Icons.account_balance_wallet_outlined),
+                    ),
+                    items: [
+                      const DropdownMenuItem(
+                        value: 'cash',
+                        child: Text('نقدي'),
+                      ),
+                      if (widget.accounts.isNotEmpty)
+                        const DropdownMenuItem(
+                          value: 'account',
+                          child: Text('حساب إلكتروني'),
+                        ),
+                    ],
+                    onChanged: (v) => setState(() {
+                      _selectedPaymentMethod = v!;
+                      if (v != 'account') _selectedAccountId = null;
+                    }),
+                  ),
+                  if (_selectedPaymentMethod == 'account') ...[
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<int>(
+                      initialValue: _selectedAccountId,
+                      decoration: const InputDecoration(
+                        labelText: 'الحساب الإلكتروني',
+                      ),
+                      items: widget.accounts
+                          .map(
+                            (a) => DropdownMenuItem(
+                              value: a.id,
+                              child: Text(a.displayLabel),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) => setState(() => _selectedAccountId = v),
+                    ),
+                  ],
+                ],
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _descriptionController,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'الوصف (اختياري)',
+                    prefixIcon: Icon(Icons.notes_outlined),
+                  ),
                 ),
               ],
             ),

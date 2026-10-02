@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:cashier_app_v2/core/database/tables/app_settings.dart';
 import 'package:cashier_app_v2/core/database/tables/customers_table.dart';
 import 'package:cashier_app_v2/core/database/tables/dailyclosing.dart';
+import 'package:cashier_app_v2/core/database/tables/debt_payments.dart';
 import 'package:cashier_app_v2/core/database/tables/expenses.dart';
 import 'package:cashier_app_v2/core/database/tables/invoice_items_table.dart';
 import 'package:cashier_app_v2/core/database/tables/invoices_table.dart';
@@ -40,6 +41,7 @@ part 'app_database.g.dart';
     PurchasePayments,
     Expenses,
     DailyClosings,
+    DebtPayments,
     Customers,
     AppSettings,
     WorkerAdvances,
@@ -54,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(QueryExecutor executor) : super(executor);
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -149,6 +151,13 @@ class AppDatabase extends _$AppDatabase {
       if (from < 19) {
         await _safeCreateTable(m, paymentAccounts);
         await _safeCreateTable(m, paymentAccountTransactions);
+      }
+
+      // Version 20: payment method on expenses and immutable credit receipts.
+      if (from < 20) {
+        await _safeAddColumn(m, expenses, expenses.paymentMethod);
+        await _safeAddColumn(m, expenses, expenses.paymentAccountId);
+        await _safeCreateTable(m, debtPayments);
       }
     },
   );
