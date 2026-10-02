@@ -29,6 +29,7 @@ class _ClosingScreenState extends State<ClosingScreen> {
   bool _loading = true;
   bool _saving = false;
   bool _closed = false;
+  List<DailyClosing> _history = [];
   double _sales = 0, _creditPayments = 0, _expenses = 0, _cashMovement = 0;
   int _invoiceCount = 0;
 
@@ -53,6 +54,9 @@ class _ClosingScreenState extends State<ClosingScreen> {
       final existing = await (_database.select(
         _database.dailyClosings,
       )..where((row) => row.date.equals(_day))).getSingleOrNull();
+      _history = await (_database.select(
+        _database.dailyClosings,
+      )..orderBy([(row) => OrderingTerm.desc(row.date)])).get();
       final invoices =
           await (_database.select(_database.invoices)..where(
                 (row) =>
@@ -187,9 +191,13 @@ class _ClosingScreenState extends State<ClosingScreen> {
             ),
           );
       if (mounted) {
+        final history = await (_database.select(
+          _database.dailyClosings,
+        )..orderBy([(row) => OrderingTerm.desc(row.date)])).get();
         setState(() {
           _closed = true;
           _saving = false;
+          _history = history;
         });
         _message('تم حفظ قفلة اليوم بنجاح');
       }
@@ -260,7 +268,7 @@ class _ClosingScreenState extends State<ClosingScreen> {
                 : Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const ClosingSidebar(),
+                      ClosingSidebar(closings: _history),
                       Expanded(child: content),
                     ],
                   );
