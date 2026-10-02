@@ -123,7 +123,8 @@ class _HomeScreenState extends State<HomeScreen> {
       onNavigate: (route) {
         _onNavigate(route);
         Navigator.of(context).pop();
-      }, onLogout:  widget.onLogout,
+      },
+      onLogout: widget.onLogout,
     );
   }
 
@@ -138,7 +139,6 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    final selectedIndex = routes.indexOf(_currentRoute);
     return Row(
       children: [
         if (isDesktop)
@@ -147,19 +147,14 @@ class _HomeScreenState extends State<HomeScreen> {
             allowedRoutes: routes,
             userName: _session.currentFullName ?? 'المستخدم',
             userRole: _roleLabel,
-            onNavigate: _onNavigate, onLogout: widget.onLogout,
+            onNavigate: _onNavigate,
+            onLogout: widget.onLogout,
           ),
         if (isDesktop) const VerticalDivider(width: 1, color: Colors.white12),
         Expanded(
-          child: IndexedStack(
-            index: selectedIndex,
-            children: [
-              for (final route in routes)
-                KeyedSubtree(
-                  key: ValueKey(route),
-                  child: _screenForRoute(route),
-                ),
-            ],
+          child: KeyedSubtree(
+            key: ValueKey(_currentRoute),
+            child: _screenForRoute(_currentRoute),
           ),
         ),
       ],
