@@ -30,7 +30,11 @@ class _ClosingScreenState extends State<ClosingScreen> {
   bool _saving = false;
   bool _closed = false;
   List<DailyClosing> _history = [];
-  double _sales = 0, _creditPayments = 0, _expenses = 0, _cashMovement = 0;
+  double _sales = 0,
+      _creditPayments = 0,
+      _purchases = 0,
+      _expenses = 0,
+      _cashMovement = 0;
   int _invoiceCount = 0;
 
   DateTime get _day =>
@@ -78,6 +82,13 @@ class _ClosingScreenState extends State<ClosingScreen> {
                     row.expenseDate.isSmallerThanValue(_tomorrow),
               ))
               .get();
+      final purchases =
+          await (_database.select(_database.purchases)..where(
+                (row) =>
+                    row.createdAt.isBiggerOrEqualValue(_day) &
+                    row.createdAt.isSmallerThanValue(_tomorrow),
+              ))
+              .get();
       final entries =
           await (_database.select(_database.paymentAccountTransactions)..where(
                 (row) =>
@@ -102,6 +113,7 @@ class _ClosingScreenState extends State<ClosingScreen> {
           .fold(0, (v, i) => v + i.netAmount);
       _invoiceCount = invoices.where((i) => i.status != 'returned').length;
       _creditPayments = debtPayments.fold(0, (v, p) => v + p.amount);
+      _purchases = purchases.fold(0, (v, p) => v + p.netTotal);
       _expenses = expenses
           .where((e) => e.status == 'paid')
           .fold(0, (v, e) => v + e.amount);
@@ -167,6 +179,7 @@ class _ClosingScreenState extends State<ClosingScreen> {
             DailyClosingsCompanion.insert(
               date: _day,
               totalSales: Value(_sales),
+              totalPurchases: Value(_purchases),
               totalExpenses: Value(_expenses),
               cashBalance: Value(actual),
               posBalance: Value(
@@ -249,7 +262,7 @@ class _ClosingScreenState extends State<ClosingScreen> {
                   ClosingSummaryCard(
                     sales: _sales,
                     creditPayments: _creditPayments,
-                    purchases: 0,
+                    purchases: _purchases,
                     expenses: _expenses,
                     recharge: 0,
                     net: _sales - _expenses,
@@ -259,7 +272,11 @@ class _ClosingScreenState extends State<ClosingScreen> {
                   const SizedBox(height: 16),
                   ClosingNotesCard(controller: _notesController),
                   const SizedBox(height: 20),
-                  SaveClosingButton(onPressed: _save, isLoading: _saving),
+                  SaveClosingButton(
+                    onPressed: _save,
+                    isLoading: _saving,
+                    isClosed: _closed,
+                  ),
                 ],
               ),
             );
