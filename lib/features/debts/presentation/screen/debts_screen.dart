@@ -1,5 +1,8 @@
 import 'package:cashier_app_v2/di.dart';
+import 'package:cashier_app_v2/core/database/app_database.dart';
 import 'package:cashier_app_v2/features/debts/domain/entities/debt_invoice.dart';
+import 'package:cashier_app_v2/features/payment_accounts/data/payment_account_repository.dart';
+import 'package:cashier_app_v2/features/payment_accounts/domain/payment_account.dart';
 import 'package:cashier_app_v2/features/debts/presentation/bloc/debt_bloc.dart';
 import 'package:cashier_app_v2/features/debts/presentation/bloc/debt_event.dart';
 import 'package:cashier_app_v2/features/debts/presentation/bloc/debt_state.dart';
@@ -20,6 +23,7 @@ class DebtsScreen extends StatefulWidget {
 
 class _DebtsScreenState extends State<DebtsScreen> {
   final TextEditingController searchController = TextEditingController();
+  List<PaymentAccountInfo> _paymentAccounts = const [];
 
   @override
   void dispose() {
@@ -29,20 +33,36 @@ class _DebtsScreenState extends State<DebtsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_paymentAccounts.isEmpty) {
+      _loadPaymentAccounts();
+    }
     return BlocProvider(
       create: (_) => getIt<DebtBloc>()..add(const LoadDebts()),
       child: _DebtsView(
         searchController: searchController,
+        paymentAccounts: _paymentAccounts,
       ),
     );
+  }
+
+  Future<void> _loadPaymentAccounts() async {
+    final repo = PaymentAccountRepository(getIt<AppDatabase>());
+    final accounts = [
+      ...await repo.getActiveAccounts(type: 'wallet'),
+      ...await repo.getActiveAccounts(type: 'visa'),
+      ...await repo.getActiveAccounts(type: 'fawry'),
+    ];
+    if (mounted) setState(() => _paymentAccounts = accounts);
   }
 }
 
 class _DebtsView extends StatelessWidget {
   final TextEditingController searchController;
+  final List<PaymentAccountInfo> paymentAccounts;
 
   const _DebtsView({
     required this.searchController,
+    required this.paymentAccounts,
   });
 
   String money(double value) {
@@ -61,19 +81,13 @@ class _DebtsView extends StatelessWidget {
               if (state is DebtError) {
                 ScaffoldMessenger.of(context)
                   ..hideCurrentSnackBar()
-                  ..showSnackBar(
-                    SnackBar(
-                      content: Text(state.message),
-                    ),
-                  );
+                  ..showSnackBar(SnackBar(content: Text(state.message)));
               }
             },
             builder: (context, state) {
               if (state is DebtLoading) {
                 return const Center(
-                  child: CircularProgressIndicator(
-                    color: AppColors.gold,
-                  ),
+                  child: CircularProgressIndicator(color: AppColors.gold),
                 );
               }
 
@@ -93,10 +107,7 @@ class _DebtsView extends StatelessWidget {
     );
   }
 
-  Widget _content(
-      BuildContext context,
-      DebtLoaded state,
-      ) {
+  Widget _content(BuildContext context, DebtLoaded state) {
     return LayoutBuilder(
       builder: (_, constraints) {
         final compact = constraints.maxWidth < 800;
@@ -111,9 +122,7 @@ class _DebtsView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              DebtsHeader(
-                outstanding: money(state.creditRemaining),
-              ),
+              DebtsHeader(outstanding: money(state.creditRemaining)),
               const SizedBox(height: 16),
               _summary(state, compact),
               const SizedBox(height: 16),
@@ -127,10 +136,7 @@ class _DebtsView extends StatelessWidget {
     );
   }
 
-  Widget _summary(
-      DebtLoaded state,
-      bool compact,
-      ) {
+  Widget _summary(DebtLoaded state, bool compact) {
     final cards = [
       DebtSummaryCard(
         title: 'إجمالي الفواتير',
@@ -169,11 +175,7 @@ class _DebtsView extends StatelessWidget {
     );
   }
 
-  Widget _filters(
-      BuildContext context,
-      DebtLoaded state,
-      bool compact,
-      ) {
+  Widget _filters(BuildContext context, DebtLoaded state, bool compact) {
     final bloc = context.read<DebtBloc>();
 
     return Container(
@@ -181,9 +183,7 @@ class _DebtsView extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.border,
-        ),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
@@ -192,9 +192,7 @@ class _DebtsView extends StatelessWidget {
             onChanged: (value) {
               bloc.add(SearchDebts(value));
             },
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-            ),
+            style: const TextStyle(color: AppColors.textPrimary),
             decoration: InputDecoration(
               hintText: 'بحث برقم الفاتورة أو اسم العميل أو الهاتف',
               prefixIcon: const Icon(
@@ -203,15 +201,15 @@ class _DebtsView extends StatelessWidget {
               ),
               suffixIcon: searchController.text.isNotEmpty
                   ? IconButton(
-                onPressed: () {
-                  searchController.clear();
-                  bloc.add(const SearchDebts(''));
-                },
-                icon: const Icon(
-                  Icons.clear,
-                  color: AppColors.textSecondary,
-                ),
-              )
+                      onPressed: () {
+                        searchController.clear();
+                        bloc.add(const SearchDebts(''));
+                      },
+                      icon: const Icon(
+                        Icons.clear,
+                        color: AppColors.textSecondary,
+                      ),
+                    )
                   : null,
             ),
           ),
@@ -227,13 +225,9 @@ class _DebtsView extends StatelessWidget {
           else
             Row(
               children: [
-                Expanded(
-                  child: _paymentFilter(context, state),
-                ),
+                Expanded(child: _paymentFilter(context, state)),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: _statusFilter(context, state),
-                ),
+                Expanded(child: _statusFilter(context, state)),
               ],
             ),
         ],
@@ -241,96 +235,52 @@ class _DebtsView extends StatelessWidget {
     );
   }
 
-  Widget _paymentFilter(
-      BuildContext context,
-      DebtLoaded state,
-      ) {
+  Widget _paymentFilter(BuildContext context, DebtLoaded state) {
     return DropdownButtonFormField<String>(
       value: state.selectedPaymentFilter,
       decoration: const InputDecoration(
         labelText: 'وسيلة الدفع',
-        prefixIcon: Icon(
-          Icons.payments_outlined,
-          color: AppColors.gold,
-        ),
+        prefixIcon: Icon(Icons.payments_outlined, color: AppColors.gold),
       ),
       dropdownColor: AppColors.surface,
-      style: const TextStyle(
-        color: AppColors.textPrimary,
-      ),
+      style: const TextStyle(color: AppColors.textPrimary),
       items: const [
-        DropdownMenuItem(
-          value: 'الكل',
-          child: Text('كل وسائل الدفع'),
-        ),
-        DropdownMenuItem(
-          value: 'نقدي',
-          child: Text('نقدي'),
-        ),
-        DropdownMenuItem(
-          value: 'آجل',
-          child: Text('آجل'),
-        ),
+        DropdownMenuItem(value: 'الكل', child: Text('كل وسائل الدفع')),
+        DropdownMenuItem(value: 'نقدي', child: Text('نقدي')),
+        DropdownMenuItem(value: 'آجل', child: Text('آجل')),
       ],
       onChanged: (value) {
         if (value == null) return;
 
-        context.read<DebtBloc>().add(
-          FilterPaymentMethod(value),
-        );
+        context.read<DebtBloc>().add(FilterPaymentMethod(value));
       },
     );
   }
 
-  Widget _statusFilter(
-      BuildContext context,
-      DebtLoaded state,
-      ) {
+  Widget _statusFilter(BuildContext context, DebtLoaded state) {
     return DropdownButtonFormField<String>(
       value: state.selectedStatusFilter,
       decoration: const InputDecoration(
         labelText: 'حالة الفاتورة',
-        prefixIcon: Icon(
-          Icons.filter_alt_outlined,
-          color: AppColors.gold,
-        ),
+        prefixIcon: Icon(Icons.filter_alt_outlined, color: AppColors.gold),
       ),
       dropdownColor: AppColors.surface,
-      style: const TextStyle(
-        color: AppColors.textPrimary,
-      ),
+      style: const TextStyle(color: AppColors.textPrimary),
       items: const [
-        DropdownMenuItem(
-          value: 'الكل',
-          child: Text('كل الحالات'),
-        ),
-        DropdownMenuItem(
-          value: 'محصل',
-          child: Text('محصل'),
-        ),
-        DropdownMenuItem(
-          value: 'جزئي',
-          child: Text('جزئي'),
-        ),
-        DropdownMenuItem(
-          value: 'غير محصل',
-          child: Text('غير محصل'),
-        ),
+        DropdownMenuItem(value: 'الكل', child: Text('كل الحالات')),
+        DropdownMenuItem(value: 'محصل', child: Text('محصل')),
+        DropdownMenuItem(value: 'جزئي', child: Text('جزئي')),
+        DropdownMenuItem(value: 'غير محصل', child: Text('غير محصل')),
       ],
       onChanged: (value) {
         if (value == null) return;
 
-        context.read<DebtBloc>().add(
-          FilterDebtStatus(value),
-        );
+        context.read<DebtBloc>().add(FilterDebtStatus(value));
       },
     );
   }
 
-  Widget _table(
-      BuildContext context,
-      DebtLoaded state,
-      ) {
+  Widget _table(BuildContext context, DebtLoaded state) {
     const double tableMinWidth = 1150;
 
     final invoices = state.filteredInvoices;
@@ -357,21 +307,16 @@ class _DebtsView extends StatelessWidget {
                       child: Center(
                         child: Text(
                           'لا توجد فواتير مطابقة',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                          ),
+                          style: TextStyle(color: AppColors.textSecondary),
                         ),
                       ),
                     )
                   else
                     ...invoices.map(
-                          (invoice) => DebtInvoiceRow(
+                      (invoice) => DebtInvoiceRow(
                         invoice: invoice,
                         onView: () {
-                          _showDebtActions(
-                            context,
-                            invoice,
-                          );
+                          _showDebtActions(context, invoice);
                         },
                       ),
                     ),
@@ -386,10 +331,7 @@ class _DebtsView extends StatelessWidget {
 
   Widget _tableHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 18,
-        vertical: 16,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       color: AppColors.surfaceLight,
       child: const Row(
         children: [
@@ -473,44 +415,30 @@ class _DebtsView extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(
-            width: 70,
-            child: Text(''),
-          ),
+          SizedBox(width: 70, child: Text('')),
         ],
       ),
     );
   }
 
-  Widget _errorState(
-      BuildContext context,
-      String message,
-      ) {
+  Widget _errorState(BuildContext context, String message) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.error_outline,
-              size: 48,
-              color: AppColors.danger,
-            ),
+            const Icon(Icons.error_outline, size: 48, color: AppColors.danger),
             const SizedBox(height: 12),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-              ),
+              style: const TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                context.read<DebtBloc>().add(
-                  const LoadDebts(),
-                );
+                context.read<DebtBloc>().add(const LoadDebts());
               },
               child: const Text('إعادة المحاولة'),
             ),
@@ -520,10 +448,7 @@ class _DebtsView extends StatelessWidget {
     );
   }
 
-  void _showDebtActions(
-      BuildContext context,
-      DebtInvoice invoice,
-      ) {
+  void _showDebtActions(BuildContext context, DebtInvoice invoice) {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
@@ -547,16 +472,12 @@ class _DebtsView extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     invoice.customerName,
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                    ),
+                    style: const TextStyle(color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'وسيلة الدفع: ${_paymentMethodText(invoice.paymentMethod)}',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                    ),
+                    style: const TextStyle(color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 20),
                   if (invoice.isCredit && !invoice.isCash)
@@ -567,31 +488,20 @@ class _DebtsView extends StatelessWidget {
                       ),
                       title: const Text(
                         'تحصيل دفعة',
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                        ),
+                        style: TextStyle(color: AppColors.textPrimary),
                       ),
-                      subtitle: Text(
-                        'المتبقي: ${money(invoice.remaining)}',
-                      ),
+                      subtitle: Text('المتبقي: ${money(invoice.remaining)}'),
                       onTap: () {
                         Navigator.pop(context);
-                        _showPaymentDialog(
-                          context,
-                          invoice,
-                        );
+                        _showPaymentDialog(context, invoice);
                       },
                     )
                   else
                     const Padding(
-                      padding: EdgeInsets.symmetric(
-                        vertical: 12,
-                      ),
+                      padding: EdgeInsets.symmetric(vertical: 12),
                       child: Text(
                         'لا توجد إجراءات متاحة لهذه الفاتورة',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                        ),
+                        style: TextStyle(color: AppColors.textSecondary),
                       ),
                     ),
                 ],
@@ -603,11 +513,9 @@ class _DebtsView extends StatelessWidget {
     );
   }
 
-  void _showPaymentDialog(
-      BuildContext context,
-      DebtInvoice invoice,
-      ) {
+  void _showPaymentDialog(BuildContext context, DebtInvoice invoice) {
     final controller = TextEditingController();
+    int? selectedAccountId;
 
     showDialog(
       context: context,
@@ -618,29 +526,50 @@ class _DebtsView extends StatelessWidget {
             backgroundColor: AppColors.surface,
             title: const Text(
               'تحصيل دفعة',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-              ),
+              style: TextStyle(color: AppColors.textPrimary),
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   'المتبقي: ${money(invoice.remaining)}',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                  ),
+                  style: const TextStyle(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 16),
+                StatefulBuilder(
+                  builder: (context, setDialogState) =>
+                      DropdownButtonFormField<int?>(
+                        initialValue: selectedAccountId,
+                        decoration: const InputDecoration(
+                          labelText: 'طريقة التحصيل',
+                          prefixIcon: Icon(
+                            Icons.account_balance_wallet_outlined,
+                          ),
+                        ),
+                        items: [
+                          const DropdownMenuItem<int?>(
+                            value: null,
+                            child: Text('نقدي'),
+                          ),
+                          ...paymentAccounts.map(
+                            (account) => DropdownMenuItem<int?>(
+                              value: account.id,
+                              child: Text(account.displayLabel),
+                            ),
+                          ),
+                        ],
+                        onChanged: (value) =>
+                            setDialogState(() => selectedAccountId = value),
+                      ),
+                ),
+                const SizedBox(height: 12),
                 TextField(
                   controller: controller,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
                   autofocus: true,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                  ),
+                  style: const TextStyle(color: AppColors.textPrimary),
                   decoration: const InputDecoration(
                     labelText: 'المبلغ',
                     hintText: 'أدخل مبلغ التحصيل',
@@ -658,28 +587,18 @@ class _DebtsView extends StatelessWidget {
               ),
               ElevatedButton(
                 onPressed: () {
-                  final amount = double.tryParse(
-                    controller.text.trim(),
-                  );
+                  final amount = double.tryParse(controller.text.trim());
 
                   if (amount == null || amount <= 0) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'أدخل مبلغًا صحيحًا',
-                        ),
-                      ),
+                      const SnackBar(content: Text('أدخل مبلغًا صحيحًا')),
                     );
                     return;
                   }
 
                   if (amount > invoice.remaining + 0.01) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'المبلغ أكبر من المتبقي',
-                        ),
-                      ),
+                      const SnackBar(content: Text('المبلغ أكبر من المتبقي')),
                     );
                     return;
                   }
@@ -688,6 +607,7 @@ class _DebtsView extends StatelessWidget {
                     PayDebtEvent(
                       invoiceId: invoice.id,
                       amount: amount,
+                      paymentAccountId: selectedAccountId,
                     ),
                   );
 

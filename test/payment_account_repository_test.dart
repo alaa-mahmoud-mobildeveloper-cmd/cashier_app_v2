@@ -458,7 +458,7 @@ void main() {
         final version = await fileDatabase
             .customSelect('PRAGMA user_version')
             .getSingle();
-        expect(version.read<int>('user_version'), 19);
+        expect(version.read<int>('user_version'), 20);
       } finally {
         await fileDatabase.close();
         await directory.delete(recursive: true);

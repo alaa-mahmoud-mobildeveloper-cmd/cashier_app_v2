@@ -1,8 +1,13 @@
-import 'package:cashier_app_v2/core/constants/app_breakpoints.dart';
+import 'package:cashier_app_v2/core/database/app_database.dart';
+import 'package:cashier_app_v2/di.dart';
+import 'package:cashier_app_v2/features/auth/domain/session_provider.dart';
 import 'package:cashier_app_v2/features/closing/data/model/payment_balance_model.dart';
+import 'package:cashier_app_v2/features/payment_accounts/data/payment_account_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:drift/drift.dart' hide Column;
+
+import '../../../../core/constants/app_breakpoints.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../widgets/add_closing_row_button.dart';
 import '../widgets/closing_header.dart';
 import '../widgets/closing_notes_card.dart';
 import '../widgets/closing_sidebar.dart';
@@ -18,339 +23,249 @@ class ClosingScreen extends StatefulWidget {
 }
 
 class _ClosingScreenState extends State<ClosingScreen> {
-  final TextEditingController notesController = TextEditingController();
-  late final List<PaymentBalanceModel> balances;
+  final _notesController = TextEditingController();
+  final _database = getIt<AppDatabase>();
+  late final List<PaymentBalanceModel> _balances = [];
+  bool _loading = true;
+  bool _saving = false;
+  bool _closed = false;
+  double _sales = 0, _creditPayments = 0, _expenses = 0, _cashMovement = 0;
+  int _invoiceCount = 0;
+
+  DateTime get _day =>
+      DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+  DateTime get _tomorrow => _day.add(const Duration(days: 1));
 
   @override
   void initState() {
     super.initState();
-    balances = [
-      PaymentBalanceModel(
-        title: 'الكاش',
-        icon: Icons.payments_outlined,
-        color: AppColors.success,
-        openingBalance: 500,
-      ),
-      PaymentBalanceModel(
-        title: 'استبيالي',
-        icon: Icons.phone_android_outlined,
-        color: AppColors.goldLight,
-      ),
-      PaymentBalanceModel(
-        title: 'ماي فوري',
-        icon: Icons.wifi_outlined,
-        color: AppColors.goldDark,
-      ),
-      PaymentBalanceModel(
-        title: 'ماكينة شحن',
-        icon: Icons.bolt,
-        color: AppColors.warning,
-      ),
-    ];
+    _load();
   }
 
   @override
   void dispose() {
-    notesController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
+  Future<void> _load() async {
+    try {
+      final existing = await (_database.select(
+        _database.dailyClosings,
+      )..where((row) => row.date.equals(_day))).getSingleOrNull();
+      final invoices =
+          await (_database.select(_database.invoices)..where(
+                (row) =>
+                    row.createdAt.isBiggerOrEqualValue(_day) &
+                    row.createdAt.isSmallerThanValue(_tomorrow),
+              ))
+              .get();
+      final debtPayments =
+          await (_database.select(_database.debtPayments)..where(
+                (row) =>
+                    row.createdAt.isBiggerOrEqualValue(_day) &
+                    row.createdAt.isSmallerThanValue(_tomorrow),
+              ))
+              .get();
+      final expenses =
+          await (_database.select(_database.expenses)..where(
+                (row) =>
+                    row.expenseDate.isBiggerOrEqualValue(_day) &
+                    row.expenseDate.isSmallerThanValue(_tomorrow),
+              ))
+              .get();
+      final entries =
+          await (_database.select(_database.paymentAccountTransactions)..where(
+                (row) =>
+                    row.createdAt.isBiggerOrEqualValue(_day) &
+                    row.createdAt.isSmallerThanValue(_tomorrow),
+              ))
+              .get();
+      final accounts = await PaymentAccountRepository(
+        _database,
+      ).getActiveAccounts(type: 'wallet');
+      final allAccounts = [
+        ...accounts,
+        ...await PaymentAccountRepository(
+          _database,
+        ).getActiveAccounts(type: 'visa'),
+        ...await PaymentAccountRepository(
+          _database,
+        ).getActiveAccounts(type: 'fawry'),
+      ];
+      _sales = invoices
+          .where((i) => i.status != 'returned')
+          .fold(0, (v, i) => v + i.netAmount);
+      _invoiceCount = invoices.where((i) => i.status != 'returned').length;
+      _creditPayments = debtPayments.fold(0, (v, p) => v + p.amount);
+      _expenses = expenses
+          .where((e) => e.status == 'paid')
+          .fold(0, (v, e) => v + e.amount);
+      _cashMovement = invoices
+          .where((i) => i.status != 'returned' && i.paymentMethod == 'cash')
+          .fold(0, (v, i) => v + i.paidAmount);
+      _cashMovement += debtPayments
+          .where((p) => p.paymentAccountId == null)
+          .fold(0, (v, p) => v + p.amount);
+      _cashMovement -= expenses
+          .where((e) => e.status == 'paid' && e.paymentAccountId == null)
+          .fold(0, (v, e) => v + e.amount);
+      _balances
+        ..clear()
+        ..add(
+          PaymentBalanceModel(
+            title: 'الكاش',
+            icon: Icons.payments_outlined,
+            color: AppColors.success,
+            systemMovement: _cashMovement,
+          ),
+        )
+        ..addAll(
+          allAccounts.map((account) {
+            final movement = entries
+                .where((e) => e.accountId == account.id)
+                .fold<double>(
+                  0,
+                  (v, e) =>
+                      v +
+                      (e.kind == 'withdrawal' || e.kind == 'refund'
+                          ? -e.amount
+                          : e.amount),
+                );
+            return PaymentBalanceModel(
+              title: account.displayLabel,
+              subtitle: account.typeLabel,
+              icon: Icons.account_balance_wallet_outlined,
+              color: AppColors.gold,
+              accountId: account.id,
+              systemMovement: movement,
+            );
+          }),
+        );
+      if (existing != null) {
+        _closed = existing.isClosed;
+        _notesController.text = existing.note ?? '';
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _save() async {
+    if (_closed) return;
+    setState(() => _saving = true);
+    try {
+      final expected = _balances.fold(0.0, (v, b) => v + b.expectedBalance);
+      final actual = _balances.fold(0.0, (v, b) => v + b.actualBalance);
+      await _database
+          .into(_database.dailyClosings)
+          .insert(
+            DailyClosingsCompanion.insert(
+              date: _day,
+              totalSales: Value(_sales),
+              totalExpenses: Value(_expenses),
+              cashBalance: Value(actual),
+              posBalance: Value(
+                _balances
+                    .where((b) => b.title.contains('فيزا'))
+                    .fold(0.0, (v, b) => v + b.actualBalance),
+              ),
+              walletBalance: Value(
+                _balances
+                    .where((b) => b.accountId != null)
+                    .fold(0.0, (v, b) => v + b.actualBalance),
+              ),
+              expectedBalance: Value(expected),
+              difference: Value(actual - expected),
+              note: Value(
+                _notesController.text.trim().isEmpty
+                    ? null
+                    : _notesController.text.trim(),
+              ),
+              userName: Value(getIt<SessionProvider>().currentFullName),
+              isClosed: const Value(true),
+            ),
+          );
+      if (mounted) {
+        setState(() {
+          _closed = true;
+          _saving = false;
+        });
+        _message('تم حفظ قفلة اليوم بنجاح');
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() => _saving = false);
+        _message(
+          error.toString().contains('UNIQUE')
+              ? 'تم إغلاق هذا اليوم مسبقًا'
+              : 'تعذر حفظ القفلة: $error',
+        );
+      }
+    }
+  }
+
+  void _message(String text) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+
   @override
   Widget build(BuildContext context) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    final expected = _balances.fold(0.0, (v, b) => v + b.expectedBalance);
+    final actual = _balances.fold(0.0, (v, b) => v + b.actualBalance);
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         body: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-            if (width < AppBreakpoints.mobile) {
-              return _buildMobileLayout();
-            }
-            if (width < AppBreakpoints.desktop) {
-              return _buildTabletLayout();
-            }
-            return _buildDesktopLayout();
+          builder: (_, c) {
+            final compact = c.maxWidth < AppBreakpoints.desktop;
+            final content = SingleChildScrollView(
+              padding: EdgeInsets.all(
+                c.maxWidth < AppBreakpoints.mobile ? 12 : 28,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ClosingHeader(
+                    date: DateTime.now(),
+                    todayNet: _sales - _expenses,
+                    todayInvoices: _invoiceCount,
+                    showStats: !compact,
+                  ),
+                  const SizedBox(height: 20),
+                  PaymentBalancesSection(
+                    balances: _balances,
+                    onChanged: () => setState(() {}),
+                  ),
+                  const SizedBox(height: 20),
+                  ClosingSummaryCard(
+                    sales: _sales,
+                    creditPayments: _creditPayments,
+                    purchases: 0,
+                    expenses: _expenses,
+                    recharge: 0,
+                    net: _sales - _expenses,
+                    actualBalance: actual,
+                    expectedBalance: expected,
+                  ),
+                  const SizedBox(height: 16),
+                  ClosingNotesCard(controller: _notesController),
+                  const SizedBox(height: 20),
+                  SaveClosingButton(onPressed: _save, isLoading: _saving),
+                ],
+              ),
+            );
+            return compact
+                ? content
+                : Row(
+                    children: [
+                      const ClosingSidebar(),
+                      Expanded(child: content),
+                    ],
+                  );
           },
         ),
       ),
     );
   }
-
-  Widget _buildDesktopLayout() {
-    return Row(
-      children: [
-        const ClosingSidebar(),
-        Expanded(
-          child: _buildMainContent(
-            screenType: _ScreenType.desktop,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTabletLayout() {
-    return _buildMainContent(
-      screenType: _ScreenType.tablet,
-    );
-  }
-
-  Widget _buildMobileLayout() {
-    return _buildMainContent(
-      screenType: _ScreenType.mobile,
-    );
-  }
-
-  Widget _buildMainContent({
-    required _ScreenType screenType,
-  }) {
-    final isMobile = screenType == _ScreenType.mobile;
-    final isTablet = screenType == _ScreenType.tablet;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.symmetric(
-            horizontal: isMobile
-                ? 12
-                : isTablet
-                ? 20
-                : 32,
-            vertical: isMobile ? 8 : 0,
-          ),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: constraints.maxHeight,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildHeader(screenType: screenType),
-                SizedBox(
-                  height: isMobile
-                      ? 18
-                      : isTablet
-                      ? 22
-                      : 28,
-                ),
-                _buildPaymentBalances(),
-                SizedBox(height: isMobile ? 14 : 18),
-                _buildAddButton(isMobile: isMobile),
-                SizedBox(
-                  height: isMobile
-                      ? 18
-                      : isTablet
-                      ? 20
-                      : 24,
-                ),
-                _buildBottomSection(screenType: screenType),
-                SizedBox(height: isMobile ? 18 : 24),
-                _buildSaveButton(),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildHeader({
-    required _ScreenType screenType,
-  }) {
-    return ClosingHeader(
-      date: DateTime.now(),
-      todayNet: 0,
-      todayInvoices: 0,
-      showStats: screenType != _ScreenType.mobile,
-    );
-  }
-
-  Widget _buildPaymentBalances() {
-    return PaymentBalancesSection(
-      balances: balances,
-      onChanged: () {
-        setState(() {});
-      },
-    );
-  }
-
-  Widget _buildAddButton({
-    required bool isMobile,
-  }) {
-    if (isMobile) {
-      return SizedBox(
-        width: double.infinity,
-        child: AddClosingRowButton(
-          onPressed: _addBalance,
-        ),
-      );
-    }
-    return Align(
-      alignment: Alignment.centerRight,
-      child: AddClosingRowButton(
-        onPressed: _addBalance,
-      ),
-    );
-  }
-
-  Widget _buildBottomSection({
-    required _ScreenType screenType,
-  }) {
-    if (screenType == _ScreenType.mobile) {
-      return _buildMobileBottomSection();
-    }
-    if (screenType == _ScreenType.tablet) {
-      return _buildTabletBottomSection();
-    }
-    return _buildDesktopBottomSection();
-  }
-
-  Widget _buildMobileBottomSection() {
-    return Column(
-      children: [
-        SizedBox(
-          height: 420,
-          child: ClosingSummaryCard(
-            sales: 0,
-            creditPayments: 0,
-            purchases: 0,
-            expenses: 0,
-            recharge: 0,
-            net: 0,
-            actualBalance: 0,
-            expectedBalance: 0,
-          ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 340,
-          child: ClosingNotesCard(
-            controller: notesController,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTabletBottomSection() {
-    return Column(
-      children: [
-        SizedBox(
-          height: 400,
-          child: ClosingSummaryCard(
-            sales: 0,
-            creditPayments: 0,
-            purchases: 0,
-            expenses: 0,
-            recharge: 0,
-            net: 0,
-            actualBalance: 0,
-            expectedBalance: 0,
-          ),
-        ),
-        const SizedBox(height: 18),
-        SizedBox(
-          height: 330,
-          child: ClosingNotesCard(
-            controller: notesController,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDesktopBottomSection() {
-    return SizedBox(
-      height: 430,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: ClosingSummaryCard(
-              sales: 0,
-              creditPayments: 0,
-              purchases: 0,
-              expenses: 0,
-              recharge: 0,
-              net: 0,
-              actualBalance: 0,
-              expectedBalance: 0,
-            ),
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: ClosingNotesCard(
-              controller: notesController,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSaveButton() {
-    return SaveClosingButton(
-      onPressed: _saveClosing,
-    );
-  }
-
-  void _addBalance() {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            title: const Text('إضافة وسيلة دفع'),
-            content: TextField(
-              controller: controller,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'اسم الوسيلة',
-                hintText: 'مثال: محفظة',
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: const Text('إلغاء'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  final name = controller.text.trim();
-                  if (name.isEmpty) {
-                    return;
-                  }
-                  setState(() {
-                    balances.add(
-                      PaymentBalanceModel(
-                        title: name,
-                        icon: Icons.account_balance_wallet_outlined,
-                        color: AppColors.gold,
-                      ),
-                    );
-                  });
-                  Navigator.pop(context);
-                },
-                child: const Text('إضافة'),
-              ),
-            ],
-          ),
-        );
-      },
-    ).then((_) {
-      controller.dispose();
-    });
-  }
-
-  void _saveClosing() {}
-}
-
-enum _ScreenType {
-  mobile,
-  tablet,
-  desktop,
 }

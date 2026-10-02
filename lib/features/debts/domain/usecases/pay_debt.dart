@@ -10,10 +10,12 @@ class PayDebt {
   Future<void> call({
     required int invoiceId,
     required double amount,
+    int? paymentAccountId,
   }) {
     return _repository.payDebt(
       invoiceId: invoiceId,
       amount: amount,
+      paymentAccountId: paymentAccountId,
     );
   }
 }

@@ -41,15 +41,14 @@ class FilterDebtStatus extends DebtEvent {
 class PayDebtEvent extends DebtEvent {
   final int invoiceId;
   final double amount;
+  final int? paymentAccountId;
 
   const PayDebtEvent({
     required this.invoiceId,
     required this.amount,
+    this.paymentAccountId,
   });
 
   @override
-  List<Object?> get props => [
-    invoiceId,
-    amount,
-  ];
+  List<Object?> get props => [invoiceId, amount, paymentAccountId];
 }

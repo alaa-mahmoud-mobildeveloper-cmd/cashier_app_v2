@@ -8,5 +8,6 @@ abstract class DebtRepository {
   Future<void> payDebt({
     required int invoiceId,
     required double amount,
+    int? paymentAccountId,
   });
 }
